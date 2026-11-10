@@ -120,9 +120,9 @@ button{cursor:pointer}
 #scheme.drag{cursor:grabbing}
 #scheme svg{display:block;width:100%;height:100%}
 .sc-msg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:600}
-#scheme svg text{font-family:Inter,"Inter Tight",Arial,sans-serif}
+#scheme svg text{font-family:"YS Text",Inter,Arial,Helvetica,sans-serif}
 #scheme .lb{cursor:pointer}
-#scheme .lb.meet{font-weight:700}
+#scheme .lb.meet text{font-weight:700}
 .glow{fill:var(--brand);opacity:.45;transition:opacity .3s}
 .glow.on{opacity:.95}
 
@@ -450,13 +450,17 @@ async function loadScheme(){
   try{const r=await fetch(SCHEME_URL);if(!r.ok)throw Error(r.status);txt=await r.text()}
   catch(e){console.warn(e);sc.loading=false;const m=document.createElement('div');m.className='sc-msg';m.textContent='Схема метро не загрузилась. Обновите страницу.';host.append(m);return}
   const svg=document.importNode(new DOMParser().parseFromString(txt,'image/svg+xml').documentElement,true);
-  svg.setAttribute('role','img');svg.setAttribute('aria-label','Схема метро Москвы с местами занятий');
-  const gGlow=el('g',{id:'glows'});svg.querySelector('#bg').after(gGlow);   /* highlighter under the lines */
-  sc.labels=[...svg.querySelectorAll('text.tx[data-s]')].map(t=>{
-    const id=SC.y2h[t.dataset.s]||('y'+t.dataset.s);const key='Y|'+t.dataset.s;
-    t.classList.add('lb');t.dataset.k=key;SC.k[key]=id;
-    const twin=t.previousElementSibling;return{el:t,id,ids:[id]};
-  });
+  svg.setAttribute('role','img');svg.setAttribute('aria-label','Схема метро Москвы с местами занятий');host.prepend(svg);
+  const gGlow=el('g',{id:'glows'});svg.querySelector('.scheme-objects-view__decorations').after(gGlow);   /* highlighter under the lines */
+  /* Yandex label groups: tie each to the station it names (same name, nearest on the scheme) */
+  sc.labels=[...svg.querySelectorAll('#labels .scheme-objects-view__label')].map((g,i)=>{
+    const tx=g.querySelector('text');if(!tx)return null;
+    const name=fold2([...g.querySelectorAll('text')].map(t=>t.textContent).join(' '));
+    const bb=tx.getBBox();let best=null,bd=1e9;
+    for(const s of SC.st){if(fold2(s.n)!==name)continue;const d=Math.hypot(s.x-(bb.x+bb.width/2),s.y-(bb.y+bb.height/2));if(d<bd){bd=d;best=s}}
+    const id=best?best.id:null;const key='Y|'+i;g.classList.add('lb');g.dataset.k=key;SC.k[key]=id;
+    return{el:g,id,ids:id?[id]:[]};
+  }).filter(Boolean);
   const md=el('defs',{},svg);
   const rg=el('radialGradient',{id:'spotg'},md);
   el('stop',{offset:'0','stop-color':'#000'},rg);el('stop',{offset:'.6','stop-color':'#000'},rg);el('stop',{offset:'1','stop-color':'#fff'},rg);
@@ -465,7 +469,7 @@ async function loadScheme(){
   sc.hole=el('circle',{cx:-999,cy:-999,r:0,fill:'url(#spotg)'},mask);
   el('rect',{id:'veil',x:-6000,y:-6000,width:18000,height:18000,mask:'url(#spotm)'},svg);
   sc.gPins=el('g',{id:'pins'},svg);
-  host.prepend(svg);sc.svg=svg;sc.gGlow=gGlow;
+  sc.svg=svg;sc.gGlow=gGlow;
   sc.ready=true;bindScheme();renderMarks();startView();tick();
   if(state.sel)schemeSelect(BY_ID[state.sel],true);
 }
