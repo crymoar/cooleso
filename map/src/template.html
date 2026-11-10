@@ -123,6 +123,11 @@ button{cursor:pointer}
 #scheme svg text{font-family:"YS Text",Inter,Arial,Helvetica,sans-serif}
 #scheme .lb{cursor:pointer}
 #hits .hit{fill:transparent;cursor:pointer}
+#objects > *, #objects > g > *, #labels .lb, #marks{transition:opacity .35s ease}
+.hl #objects .scheme-objects-view__decorations ~ * :not(.on){}
+.hl #objects line:not(.on), .hl #objects path:not(.on), .hl #objects g.scheme-objects-view__station:not(.on), .hl #objects .scheme-objects-view__transfers > :not(.on), .hl #objects > g > g:not(.on){opacity:.12}
+.hl #labels .lb:not(.on){opacity:.18}
+.hl #marks{opacity:.35}
 #scheme .lb.meet text{font-weight:700}
 .glow{fill:var(--brand);opacity:.45;transition:opacity .3s}
 .glow.on{opacity:.95}
@@ -481,7 +486,6 @@ async function loadScheme(){
     const id=best?best.id:null;const key='Y|'+i;g.classList.add('lb');g.dataset.k=key;SC.k[key]=id;
     return{el:g,id,ids:id?[id]:[]};
   }).filter(Boolean);
-  sc.veil=el('path',{id:'veil','fill-rule':'evenodd',d:''},svg);
   sc.gMarks=el('g',{id:'marks'});svg.querySelector('#labels').before(sc.gMarks);
   sc.gPins=el('g',{id:'pins'},svg);
   const gh=el('g',{id:'hits'},svg);
@@ -489,6 +493,12 @@ async function loadScheme(){
     el('rect',{class:'hit','data-sid':l.id,x:b.x-4,y:b.y-3,width:b.width+8,height:b.height+6},gh)});
   SC.st.forEach(s=>el('circle',{class:'hit','data-sid':s.id,cx:s.x,cy:s.y,r:11},gh));
   sc.svg=svg;sc.gGlow=gGlow;
+  /* index line and station shapes by line colour, for highlighting */
+  const objs=svg.querySelector('#objects');
+  sc.shapes=[...objs.querySelectorAll(':scope > g > line, :scope > g > path, :scope > g > g, :scope > line, :scope > path, :scope > g.scheme-objects-view__station, :scope > g.scheme-objects-view__transfers > *')]
+    .filter(e=>!e.closest('.scheme-objects-view__decorations'));
+  sc.shapes.forEach(e=>{const cs=new Set();[e,...e.querySelectorAll('*')].forEach(n=>{for(const a of ['stroke','fill']){const v=(n.getAttribute(a)||'').toLowerCase();if(/^#[0-9a-f]{6}$/.test(v))cs.add(v)}});e._c=cs});
+  sc.lab=sc.labels.map(l=>{const s=SC.st.find(x=>x.id===l.id);return{el:l.el,c:new Set(s?s.c:[])}});
   sc.ready=true;bindScheme();renderMarks();startView();
   if(state.sel)schemeSelect(BY_ID[state.sel],true);
 }
@@ -540,34 +550,29 @@ function stopsBetween(from,toId){ /* stops along the same line, if any */
 }
 
 /* spotlight target */
-const HOVER_DELAY=260, GROW_MS=420, MOVE_MS=300, CARD_MS=200, SHRINK_MS=320;
-let hoverT=null, seqT=null, spotAnim=0, spot={x:0,y:0,r:0,on:false};
-function drawSpot(){const{x,y,r}=spot;sc.veil.setAttribute('d',r>0.5?`M-6000-6000H9000V9000H-6000Z M${x-r} ${y}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z`:'M-6000-6000H9000V9000H-6000Z')}
-function animateSpot(to,ms,done){
-  cancelAnimationFrame(spotAnim);const from={x:spot.x,y:spot.y,r:spot.r},t0=performance.now();
-  const f=now=>{const k=Math.min(1,(now-t0)/ms),e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
-    spot.x=from.x+(to.x-from.x)*e;spot.y=from.y+(to.y-from.y)*e;spot.r=from.r+(to.r-from.r)*e;drawSpot();
-    if(k<1)spotAnim=requestAnimationFrame(f);else if(done)done()};
-  spotAnim=requestAnimationFrame(f);
-}
+const HOVER_DELAY=180;
+let hoverT=null, lit=null;
 function cardOff(){$('#sc-card').classList.remove('on')}
-/* hover -> wait -> circle grows -> card appears; leave -> card fades -> circle shrinks -> veil fades */
+function lightLines(cols){
+  const svg=sc.svg;
+  if(!cols){svg.classList.remove('hl');return}
+  const has=e=>{for(const c of e._c)if(cols.has(c))return true;return false};
+  sc.shapes.forEach(e=>e.classList.toggle('on',has(e)));
+  sc.lab.forEach(l=>{let on=false;for(const c of l.c)if(cols.has(c)){on=true;break}l.el.classList.toggle('on',on)});
+  svg.classList.add('hl');
+}
+/* hover a station: after a short delay its line(s) light up, the rest fades */
 function setTarget(id,fromStation,now){
-  clearTimeout(hoverT);clearTimeout(seqT);
-  if(!id){
-    if(!sc.target&&!spot.on)return;
-    sc.target=null;sc.from=null;cardOff();layoutPins();hoverList(null);
-    seqT=setTimeout(()=>{animateSpot({x:spot.x,y:spot.y,r:0},SHRINK_MS,()=>{spot.on=false});sc.veil.classList.remove('on')},CARD_MS);
-    return;
-  }
-  if(id===sc.target&&spot.on){if(fromStation&&fromStation!==sc.from){sc.from=fromStation;renderCard()}return}
+  clearTimeout(hoverT);
+  if(!id&&!fromStation){sc.target=null;sc.from=null;lit=null;cardOff();lightLines(null);layoutPins();hoverList(null);return}
+  const st=fromStation||SC.st.find(s=>s.id===id);
+  if(st&&lit===st.id)return;
   const go=()=>{
-    const[x,y]=SC.pos[id],moving=spot.on&&spot.r>1;
-    sc.target=id;sc.from=fromStation||null;cardOff();layoutPins();hoverList(id);
-    sc.veil.classList.add('on');
-    if(!moving){spot={x,y,r:0,on:true};drawSpot()}
-    spot.on=true;
-    animateSpot({x,y,r:SPOT_R},moving?MOVE_MS:GROW_MS,()=>{if(sc.target===id)renderCard()});
+    lit=st?st.id:null;sc.from=null;
+    lightLines(new Set(st?st.c:[]));
+    sc.target=id&&MEET.has(id)?id:null;
+    if(sc.target)renderCard();else cardOff();
+    layoutPins();hoverList(sc.target);
   };
   if(now)go();else hoverT=setTimeout(go,HOVER_DELAY);
 }
@@ -618,8 +623,8 @@ function pickAt(e){
   const h=e.target.closest&&e.target.closest('.hit');if(!h)return null;
   const st=SC.st.find(s=>s.id===h.dataset.sid);if(!st)return null;
   const svc=[...MEET].find(i=>BY_ID[i]&&BY_ID[i].sid===st.id);
-  const id=MEET.has(st.id)?st.id:svc||nearestMeet(st.x,st.y,SEEK_R);
-  return id?{id,st}:null;
+  const id=MEET.has(st.id)?st.id:svc||null;
+  return {id,st};
 }
 let leaveT;
 function bindScheme(){
@@ -633,13 +638,13 @@ function bindScheme(){
     if(e.pointerType!=='mouse'||sc.pinned||e.target.closest('#sc-card'))return;
     const hit=pickAt(e);
     if(hit){clearTimeout(leaveT);setTarget(hit.id,hit.st)}
-    else{clearTimeout(hoverT);clearTimeout(leaveT);if(sc.target)leaveT=setTimeout(()=>{if(!sc.pinned)setTarget(null)},160)}
+    else{clearTimeout(hoverT);clearTimeout(leaveT);if(lit)leaveT=setTimeout(()=>{if(!sc.pinned)setTarget(null)},160)}
   });
   box.addEventListener('pointerdown',e=>{if(e.target.closest('#sc-card'))return;ptrs.set(e.pointerId,e);box.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};moved=false});
   const up=e=>{if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);box.classList.remove('drag');
     if(!moved&&!ptrs.size){const hit=pickAt(e);
-      if(hit&&(hit.st.id===hit.id||BY_ID[hit.id]?.sid===hit.st.id))select(hit.id,false);
-      else if(hit){sc.pinned=hit.id;setTarget(hit.id,hit.st,true)}
+      if(hit&&hit.id)select(hit.id,false);
+      else if(hit){sc.pinned=null;setTarget(null,hit.st,true)}
       else{sc.pinned=null;if(state.sel)select(null);else setTarget(null)}}
     if(!ptrs.size)drag=null};
   box.addEventListener('pointerup',up);box.addEventListener('pointercancel',up);
@@ -662,14 +667,14 @@ function schemeSelect(p,fly){
   if(!p){sc.pinned=null;setTarget(null);return}
   const sid=p.type==='st'?p.id:(p.raw.nb.find(n=>SC.pos[n.s]&&MEET.has(n.s))||p.raw.nb.find(n=>SC.pos[n.s])||{}).s;
   if(!sid||!SC.pos[sid])return;
-  const id=MEET.has(sid)?sid:nearestMeet(...SC.pos[sid],SEEK_R);
-  sc.pinned=id||null;if(id)setTarget(id,SC.st.find(s=>s.id===sid),true);
+  const id=MEET.has(sid)?sid:null;
+  sc.pinned=id||null;setTarget(id,SC.st.find(s=>s.id===sid),true);
   if(fly){const[x,y]=SC.pos[sid],r=$('#scheme').getBoundingClientRect(),w=Math.min(sc.vb[2],1100),h=w*r.height/r.width;sc.tvb=[x-w/2,y-h/2,w,h];kick()}
 }
 function focusStation(sid){ /* list hover -> spotlight */
   if(!sc.ready||sc.pinned)return;
   if(!sid)return setTarget(null);
-  if(MEET.has(sid))setTarget(sid,null);
+  if(MEET.has(sid))setTarget(sid,SC.st.find(s=>s.id===sid)||null);
 }
 function card(){}
 

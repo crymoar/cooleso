@@ -16,5 +16,6 @@ for hid,n,lat,lon in hh:
         s=best[1]; pos[hid]=[round(s['xy'][0],1),round(s['xy'][1],1)]; y2h.setdefault(s['id'],hid)
 meet=[s for s in D['stations'] if any(r['basis']=='explicit' for r in s['refs'])]
 print('hh matched',len(pos),'of',len(hh)); print('meeting not placed',[s['name'] for s in meet if s['id'] not in pos])
-st=[{'id':y2h.get(s['id'],'y'+s['id']),'n':s['n'],'x':round(s['xy'][0],1),'y':round(s['xy'][1],1)} for s in Y['st'] if s['xy']]
+LC={k:(v['c'] or '').lower() for k,v in Y['lines'].items()}
+st=[{'id':y2h.get(s['id'],'y'+s['id']),'n':s['n'],'x':round(s['xy'][0],1),'y':round(s['xy'][1],1),'c':sorted({LC[l] for l in s['lines'] if l in LC})} for s in Y['st'] if s['xy']]
 json.dump({'pos':pos,'st':st,'y2h':y2h,'vb':[0,0]+Y['size']},open(S+'/scheme_ym.json','w'),ensure_ascii=False,separators=(',',':'))
