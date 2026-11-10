@@ -681,7 +681,7 @@ function pickAt(e){
   const st=SC.st.find(s=>s.id===h.dataset.sid);if(!st)return null;
   const svc=[...MEET].find(i=>BY_ID[i]&&BY_ID[i].sid===st.id);
   const id=MEET.has(st.id)?st.id:svc||null;
-  return {id,st};
+  return id?{id,st}:null;  /* only places with lessons react */
 }
 let leaveT;
 function bindScheme(){
