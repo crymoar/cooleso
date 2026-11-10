@@ -187,7 +187,9 @@ button{cursor:pointer}
 .pl{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;font-style:normal;font-size:10.5px;font-weight:800}
 .lr{width:14px;height:14px;border-radius:50%;border:3.5px solid var(--c);display:inline-block}.lr2{border-color:#f0a202 #2b7de9 #2b7de9 #f0a202;transform:rotate(45deg)}
 .legend{flex-wrap:wrap;max-width:calc(100% - 90px)}
-.is-map .lg-sc{display:none}.is-scheme .lg-mp{display:none}
+.lg-mp{display:none!important}
+.is-scheme .lg-only-map{display:none}
+.lg-ad2{width:14px;height:14px;border-radius:50%;background:#eceee9;display:inline-grid;place-items:center;box-shadow:0 0 0 2px #fff,0 1px 2px rgba(0,0,0,.3)}
 .legend{position:absolute;left:14px;bottom:14px;z-index:3;display:flex;gap:14px;align-items:center;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.95);box-shadow:var(--shadow);font-size:12.5px;font-weight:700;color:var(--ink-2)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .lg-st{width:14px;height:14px;border-radius:50%;border:3.5px solid #e42313;background:#fff}
@@ -262,7 +264,7 @@ button{cursor:pointer}
     <div class="views" role="tablist" aria-label="Вид"><button role="tab" id="v-scheme" aria-selected="true">Схема метро</button><button role="tab" id="v-map" aria-selected="false">Карта города</button></div>
     <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="true">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
-    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="ld" style="background:#f29900"></i>механика</span><span class="lg-sc"><i class="ld" style="background:#1f6fe5"></i>автомат</span><span class="lg-sc"><i class="ld" style="background:linear-gradient(90deg,#f29900 50%,#1f6fe5 50%)"></i>обе</span><span class="lg-sc"><i class="ld" style="background:#8a8f95"></i>КПП не указана</span><span class="lg-sc"><i class="ld" style="background:#151717;border-radius:3px;box-shadow:0 0 0 2px #fff,0 1px 2px rgba(0,0,0,.3),inset 0 0 0 3.5px #151717,inset 0 0 0 6px #f5ce00"></i>офис</span><span class="lg-sc"><i class="ld" style="background:#0e9a8f"></i>мото</span></div>
+    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="ld" style="background:#f29900"></i>механика</span><span class="lg-sc"><i class="ld" style="background:#1f6fe5"></i>автомат</span><span class="lg-sc"><i class="ld" style="background:linear-gradient(90deg,#f29900 50%,#1f6fe5 50%)"></i>обе</span><span class="lg-sc"><i class="ld" style="background:#8a8f95"></i>КПП не указана</span><span class="lg-sc"><i class="ld" style="background:#151717;border-radius:3px;box-shadow:0 0 0 2px #fff,0 1px 2px rgba(0,0,0,.3),inset 0 0 0 3.5px #151717,inset 0 0 0 6px #f5ce00"></i>офис</span><span class="lg-sc"><i class="ld" style="background:#0e9a8f"></i>мото</span><span class="lg-sc lg-only-map"><i class="lg-ad2"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3b3f43" stroke-width="3" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg></i>адрес</span></div>
     <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
   </section>
 </div>
@@ -409,7 +411,7 @@ function select(id,fly){
 let map,ready=false;
 const fc=f=>({type:'FeatureCollection',features:f});
 const pt=(p,props)=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:props});
-function placeFeature(p){const sv=svcOf(p);return pt(p,{id:p.id,type:p.type==='ad'?'ad':'st',name:p.name,color:sv==='both'?SVC.at:SVC[sv]||lineColor(p.lines[0]),kind:p.kind})}
+function placeFeature(p){const sv=p.type==='ad'?'ad':svcOf(p);return pt(p,{id:p.id,type:p.type==='ad'?'ad':'st',name:p.name,mk:'mk-'+sv,kind:p.kind})}
 
 function initMap(){
   try{
@@ -426,9 +428,17 @@ function initMap(){
       if(l.type==='symbol'&&l.paint&&'text-color'in l.paint)map.setPaintProperty(l.id,'text-color','#8b9096');
       if(l.type==='symbol'&&JSON.stringify(l.layout?.['text-field']||'').includes('name'))map.setLayoutProperty(l.id,'text-field',['coalesce',['get','name:ru'],['get','name']]);
     }
-    const img=new Image(96,96);
-    img.onload=()=>{map.addImage('koleso',img,{pixelRatio:2});addLayers()};
-    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="-6 -6 76 76"><circle cx="32" cy="32" r="35" fill="#fff"/>${LOGO}</svg>`);
+    const C={mt:'#f29900',at:'#1f6fe5',none:'#8a8f95',moto:'#0e9a8f'};
+    const disc=f=>`<circle cx="16" cy="16" r="12.5" fill="#fff"/>${f}`;
+    const SVGS={
+      mt:disc(`<circle cx="16" cy="16" r="9.5" fill="${C.mt}"/>`),at:disc(`<circle cx="16" cy="16" r="9.5" fill="${C.at}"/>`),
+      none:disc(`<circle cx="16" cy="16" r="9.5" fill="${C.none}"/>`),moto:disc(`<circle cx="16" cy="16" r="9.5" fill="${C.moto}"/>`),
+      both:disc(`<path d="M16 6.5A9.5 9.5 0 0 0 16 25.5Z" fill="${C.mt}"/><path d="M16 6.5A9.5 9.5 0 0 1 16 25.5Z" fill="${C.at}"/>`),
+      office:`<rect x="3.5" y="3.5" width="25" height="25" rx="6" fill="#fff"/><rect x="6.5" y="6.5" width="19" height="19" rx="4" fill="#151717"/><circle cx="16" cy="16" r="3.8" fill="#f5ce00"/>`,
+      ad:`<circle cx="16" cy="16" r="12.5" fill="#fff"/><circle cx="16" cy="16" r="10.5" fill="#eceee9"/><g fill="none" stroke="#3b3f43" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M10.5 15.5 16 10.8l5.5 4.7"/><path d="M12.2 14.4v6.6h7.6v-6.6"/></g>`};
+    const keys=Object.keys(SVGS);let left=keys.length;
+    keys.forEach(k=>{const im=new Image(64,64);im.onload=()=>{map.addImage('mk-'+k,im,{pixelRatio:2});if(!--left)addLayers()};
+      im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 32 32"><defs><filter id="s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity=".35"/></filter></defs><g filter="url(#s)">${SVGS[k]}</g></svg>`)});
   });
 }
 
@@ -446,13 +456,14 @@ function addLayers(){
   map.addLayer({id:'allst',type:'circle',source:'allst',minzoom:11,paint:{'circle-radius':['interpolate',['linear'],['zoom'],11,2,15,4],'circle-color':'#fff','circle-stroke-color':'#9aa0a5','circle-stroke-width':1.2}});
   map.addLayer({id:'allst-label',type:'symbol',source:'allst',minzoom:13.5,layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':11,'text-offset':[0,1],'text-anchor':'top','text-optional':true},paint:{'text-color':'#7c8288','text-halo-color':'#fff','text-halo-width':1.4}});
   map.addLayer({id:'links',type:'line',source:'links',layout:{'line-cap':'round'},paint:{'line-color':'#151717','line-width':2,'line-dasharray':[0,2],'line-opacity':.7}});
-  map.addLayer({id:'clusters',type:'circle',source:'places',filter:['has','point_count'],paint:{'circle-color':'#f5ce00','circle-radius':['step',['get','point_count'],15,5,19,15,24],'circle-stroke-color':'#fff','circle-stroke-width':3}});
-  map.addLayer({id:'cluster-n',type:'symbol',source:'places',filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],'text-font':['Noto Sans Bold'],'text-size':14,'text-allow-overlap':true},paint:{'text-color':'#151717'}});
+  map.addLayer({id:'clusters',type:'circle',source:'places',filter:['has','point_count'],paint:{'circle-color':'#151717','circle-radius':['step',['get','point_count'],14,5,17,15,21],'circle-stroke-color':'#fff','circle-stroke-width':3}});
+  map.addLayer({id:'cluster-n',type:'symbol',source:'places',filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],'text-font':['Noto Sans Bold'],'text-size':14,'text-allow-overlap':true},paint:{'text-color':'#fff'}});
   const single=['!',['has','point_count']];
-  map.addLayer({id:'st',type:'circle',source:'places',filter:['all',single,['==',['get','type'],'st']],paint:{'circle-radius':['interpolate',['linear'],['zoom'],9,6,14,9],'circle-color':['case',['boolean',['feature-state','hover'],false],'#fff6c7','#fff'],'circle-stroke-color':['get','color'],'circle-stroke-width':['interpolate',['linear'],['zoom'],9,3.5,14,4.5]}});
-  map.addLayer({id:'ad',type:'symbol',source:'places',filter:['all',single,['==',['get','type'],'ad']],layout:{'icon-image':'koleso','icon-size':['interpolate',['linear'],['zoom'],9,.62,14,.85],'icon-allow-overlap':true}});
+  const isz=['interpolate',['linear'],['zoom'],8,.62,12,.8,15,1];
+  map.addLayer({id:'st',type:'symbol',source:'places',filter:['all',single,['==',['get','type'],'st']],layout:{'icon-image':['get','mk'],'icon-size':isz,'icon-allow-overlap':true,'icon-ignore-placement':true}});
+  map.addLayer({id:'ad',type:'symbol',source:'places',filter:['all',single,['==',['get','type'],'ad']],layout:{'icon-image':'mk-ad','icon-size':isz,'icon-allow-overlap':true,'icon-ignore-placement':true}});
   map.addLayer({id:'place-label',type:'symbol',source:'places',filter:single,minzoom:11.5,layout:{'text-field':['get','name'],'text-font':['Noto Sans Bold'],'text-size':12.5,'text-variable-anchor':['left','right','top','bottom'],'text-radial-offset':1.7,'text-justify':'auto','text-max-width':10,'text-optional':true},paint:{'text-color':'#151717','text-halo-color':'#fff','text-halo-width':1.8}});
-  map.addLayer({id:'sel-ring',type:'circle',source:'sel',paint:{'circle-radius':20,'circle-color':'rgba(245,206,0,.28)','circle-stroke-color':'#151717','circle-stroke-width':2.5}});
+  map.addLayer({id:'sel-ring',type:'circle',source:'sel',paint:{'circle-radius':17,'circle-color':'rgba(0,0,0,0)','circle-stroke-color':'#151717','circle-stroke-width':2.5}});
   map.moveLayer('st');map.moveLayer('ad');map.moveLayer('place-label');
 
   const tip=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:14});
