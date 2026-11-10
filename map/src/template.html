@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Где проходят занятия — автошкола «Колесо»</title>
+<meta name="description" content="Места встречи с инструктором в Москве и области: у метро и по адресу. Поиск, фильтры, время пешком от станции.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root{
+  --ink:#151717;--ink-2:#3b3f43;--muted:#6f757b;--line:#e7e7e2;--bg:#f5f5f1;--surface:#fff;
+  --brand:#f5ce00;--brand-soft:#fff6c7;--ok:#1d7a4f;--ok-soft:#e6f4ec;--warn:#9a6200;--warn-soft:#fff3d6;
+  --radius:14px;--shadow:0 6px 24px rgba(21,23,23,.10),0 1px 3px rgba(21,23,23,.08);
+  --panel:400px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;font:500 15px/1.45 "Inter Tight",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #2d6cdf;outline-offset:2px}
+
+.app{display:grid;grid-template-columns:var(--panel) 1fr;height:100dvh}
+.panel{display:flex;flex-direction:column;min-height:0;background:var(--surface);border-right:1px solid var(--line);z-index:2}
+.map-wrap{position:relative;min-width:0}
+#map{position:absolute;inset:0;background:#eef0ea}
+
+/* header */
+.head{padding:20px 20px 14px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{width:34px;height:34px;flex:none}
+.brand h1{margin:0;font-size:20px;line-height:1.15;font-weight:800;letter-spacing:-.01em}
+.brand small{display:block;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.stat{background:var(--bg);border-radius:12px;padding:9px 11px}
+.stat b{display:block;font-size:20px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted);font-weight:600}
+
+/* controls */
+.controls{padding:0 20px 12px;border-bottom:1px solid var(--line)}
+.search{position:relative}
+.search svg{position:absolute;left:13px;top:50%;translate:0 -50%;width:18px;height:18px;color:var(--muted);pointer-events:none}
+.search input{width:100%;height:46px;padding:0 40px 0 40px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);font-weight:600;font-size:15px;transition:border-color .15s}
+.search input::placeholder{color:#9aa0a5;font-weight:500}
+.search input:focus{outline:none;border-color:var(--ink)}
+.search .clear{position:absolute;right:6px;top:50%;translate:0 -50%;width:34px;height:34px;border:0;border-radius:9px;background:none;color:var(--muted);display:none}
+.search.has-value .clear{display:block}
+.seg{display:flex;gap:4px;margin-top:10px;padding:4px;background:var(--bg);border-radius:12px}
+.seg button{flex:1;height:36px;border:0;border-radius:9px;background:none;font-weight:700;font-size:14px;color:var(--ink-2);white-space:nowrap;transition:background .15s}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg button .n{font-weight:600;color:var(--muted);margin-left:4px;font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{height:32px;padding:0 12px;border:1.5px solid var(--line);border-radius:999px;background:var(--surface);font-weight:700;font-size:13px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip .tick{display:none}
+.chip[aria-pressed=true] .tick{display:inline}
+
+/* list */
+.list{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:6px 10px 16px}
+.count{padding:8px 10px 6px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.item{display:grid;grid-template-columns:28px 1fr;gap:10px;width:100%;text-align:left;padding:11px 10px;border:0;border-radius:12px;background:none}
+.item:hover,.item.hover{background:var(--bg)}
+.item.active{background:var(--brand-soft)}
+.ico{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;margin-top:1px}
+.ico.st{background:#fff;border:3.5px solid var(--c,#999);color:var(--ink)}
+.ico.ad{background:var(--ink);color:var(--brand)}
+.ico.ad svg{width:14px;height:14px}
+.item .t{font-weight:700;font-size:15px;line-height:1.3}
+.item .s{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:3px;font-size:13px;color:var(--muted);font-weight:600}
+.dots{display:inline-flex;gap:3px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--c);display:inline-block;flex:none}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:6px;background:var(--bg);color:var(--ink-2);font-size:11.5px;font-weight:700}
+.tag.walk{background:var(--ok-soft);color:var(--ok)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+
+/* detail */
+.detail{display:none;flex:1;min-height:0;overflow:auto;padding:14px 20px 20px}
+.panel.show-detail .detail{display:block}
+.panel.show-detail .list{display:none}
+.back{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 10px 0 6px;margin-left:-6px;border:0;border-radius:9px;background:none;font-weight:700;color:var(--ink-2)}
+.back:hover{background:var(--bg)}
+.detail h2{margin:10px 0 4px;font-size:22px;line-height:1.2;font-weight:800;letter-spacing:-.01em}
+.detail .kind{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--muted);font-weight:600}
+.line-badge{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px 0 7px;border-radius:999px;background:var(--bg);font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.how{margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--brand-soft);font-size:14px;font-weight:600}
+.how b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#7a6500;margin-bottom:2px}
+.sec{margin-top:18px}
+.sec h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:800}
+.near{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.near li{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px}
+.near .nm{font-weight:700;display:flex;align-items:center;gap:7px}
+.near .mt{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:1px}
+.near .time{font-weight:800;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.near .time small{font-weight:600;color:var(--muted);font-size:12px}
+.near button{all:unset;cursor:pointer}
+.near button:hover .nm{text-decoration:underline}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;padding:0 14px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.btn.primary{background:var(--brand);border-color:var(--brand)}
+.btn:hover{filter:brightness(.97)}
+.note{margin-top:14px;font-size:12.5px;color:var(--muted);font-weight:500}
+.warnbox{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:13px;font-weight:600}
+
+/* map overlays */
+.mapbar{position:absolute;top:14px;left:14px;display:flex;gap:8px;z-index:3}
+.pill-btn{height:38px;padding:0 14px;border:0;border-radius:999px;background:var(--surface);box-shadow:var(--shadow);font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:7px}
+.pill-btn[aria-pressed=true]{background:var(--ink);color:#fff}
+.views{position:absolute;top:14px;right:14px;z-index:5;display:flex;gap:4px;padding:4px;background:var(--surface);border-radius:12px;box-shadow:var(--shadow)}
+.views button{height:34px;padding:0 14px;border:0;border-radius:9px;background:none;font-weight:700;font-size:13.5px;color:var(--ink-2)}
+.views button[aria-selected=true]{background:var(--ink);color:#fff}
+.is-scheme .mapbar,.is-scheme .maplibregl-ctrl-top-right{display:none}
+.is-map .views{right:62px}
+#scheme{position:absolute;inset:0;background:#fff;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+#scheme.drag{cursor:grabbing}
+#scheme svg{display:block;width:100%;height:100%}
+.sc-msg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:600}
+#geo path{transition:opacity .18s}
+.focus #geo path:not(.w){opacity:.13}
+.focus #geo path.on{opacity:1}
+.lb{font:500 10.8px "Inter Tight",Arial,sans-serif;fill:#252225;stroke:#fff;stroke-width:3px;stroke-linejoin:round;paint-order:stroke fill;cursor:pointer;transition:opacity .18s}
+.lb.fixed{fill:#252225}
+.lb:hover,.lb.cur{font-weight:700}
+.focus .lb{opacity:.22}
+.focus .lb.on{opacity:1}
+.lb.meet{font-weight:700}
+.hit{fill:transparent;cursor:pointer}
+.mk{fill:var(--brand);stroke:#151717;stroke-width:2.6;pointer-events:none;transition:opacity .18s}
+.focus .mk{opacity:.35}.focus .mk.on{opacity:1}
+.ring{fill:none;stroke:#151717;stroke-width:2.5;stroke-dasharray:4 3;pointer-events:none}
+.spot{fill:rgba(245,206,0,.10);stroke:rgba(21,23,23,.25);stroke-width:1;stroke-dasharray:3 4;pointer-events:none}
+.sc-card{position:absolute;z-index:6;max-width:260px;padding:10px 12px;border-radius:12px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;pointer-events:none}
+.sc-card b{display:block;font-size:15px;font-weight:800;margin-bottom:3px}
+.sc-card .r{display:flex;align-items:center;gap:6px;color:var(--ink-2);margin-top:2px}
+.sc-card .ok{color:var(--ok)}
+.sc-zoom{position:absolute;right:14px;bottom:14px;z-index:5;display:flex;flex-direction:column;border-radius:12px;background:#fff;box-shadow:var(--shadow);overflow:hidden}
+.sc-zoom button{width:40px;height:40px;border:0;background:none;font-size:20px;font-weight:600}
+.sc-zoom button+button{border-top:1px solid var(--line)}
+.is-map .lg-sc{display:none}.is-scheme .lg-mp{display:none}
+.legend{position:absolute;left:14px;bottom:14px;z-index:3;display:flex;gap:14px;align-items:center;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.95);box-shadow:var(--shadow);font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg-st{width:14px;height:14px;border-radius:50%;border:3.5px solid #e42313;background:#fff}
+.lg-ad{width:16px;height:16px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 2.5px var(--brand) inset}
+.lg-cl{width:16px;height:16px;border-radius:50%;background:var(--brand);border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.maplibregl-ctrl-group{border-radius:12px!important;box-shadow:var(--shadow)!important}
+.maplibregl-ctrl-group button{width:38px!important;height:38px!important}
+.maplibregl-popup-content{font:700 13px/1.3 "Inter Tight",system-ui,sans-serif;padding:7px 11px;border-radius:10px;box-shadow:var(--shadow)}
+.maplibregl-popup-tip{display:none}
+.maplibregl-ctrl-attrib{font-size:10.5px}
+.fallback{display:none;position:absolute;inset:0;place-items:center;padding:24px;text-align:center;color:var(--muted);z-index:4;background:var(--bg)}
+.no-map .fallback{display:grid}
+.foot{padding:10px 20px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);font-weight:500}
+
+@media (max-width:820px){
+  .app{display:flex;flex-direction:column;height:auto;min-height:100dvh}
+  .map-wrap{order:-1;height:58dvh;min-height:340px;flex:none}
+  .panel{border-right:0;border-radius:18px 18px 0 0;margin-top:-18px;box-shadow:0 -6px 20px rgba(0,0,0,.08)}
+  .head{padding:18px 16px 12px}
+  .controls{padding:0 16px 12px}
+  .list,.detail{overflow:visible}
+  .detail{padding:12px 16px 24px}
+  .legend{display:none}
+  .views{top:10px;right:10px}
+  .is-map .views{right:56px}
+  .mapbar{top:10px;left:10px}
+  .stats b{font-size:18px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app is-scheme" id="app">
+  <aside class="panel" id="panel" aria-label="Места занятий">
+    <div class="head">
+      <div class="brand">
+        <svg viewBox="0 0 64 64" aria-hidden="true" id="logo"></svg>
+        <h1>Где проходят занятия<small>Автошкола «Колесо» · Москва и область</small></h1>
+      </div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="controls">
+      <div class="search" id="searchbox">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Станция, улица или линия" autocomplete="off" aria-label="Поиск по станции, адресу или линии">
+        <button class="clear" id="clear" aria-label="Очистить поиск">✕</button>
+      </div>
+      <div class="seg" role="group" aria-label="Тип места">
+        <button data-type="all" aria-pressed="true">Все</button>
+        <button data-type="st" aria-pressed="false">У метро<span class="n" id="n-st"></span></button>
+        <button data-type="ad" aria-pressed="false">По адресу<span class="n" id="n-ad"></span></button>
+      </div>
+      <div class="chips" role="group" aria-label="Фильтры">
+        <button class="chip" data-kpp="mt" aria-pressed="false"><span class="tick">✓</span>Механика</button>
+        <button class="chip" data-kpp="at" aria-pressed="false"><span class="tick">✓</span>Автомат</button>
+        <button class="chip" id="mcd" aria-pressed="true"><span class="tick">✓</span>МЦД и МЦК</button>
+      </div>
+    </div>
+    <div class="list" id="list" role="list"></div>
+    <div class="detail" id="detail" aria-live="polite"></div>
+    <div class="foot" id="foot"></div>
+  </aside>
+  <section class="map-wrap" aria-label="Карта">
+    <div id="map"></div>
+    <div id="scheme" hidden><div class="sc-msg" id="sc-msg">Загружаем схему метро…</div></div>
+    <div class="sc-card" id="sc-card" hidden></div>
+    <div class="sc-zoom" id="sc-zoom" hidden><button data-z="1.5" aria-label="Приблизить">+</button><button data-z="0.667" aria-label="Отдалить">−</button><button data-z="0" aria-label="Показать всю схему">⤢</button></div>
+    <div class="views" role="tablist" aria-label="Вид"><button role="tab" id="v-scheme" aria-selected="true">Схема метро</button><button role="tab" id="v-map" aria-selected="false">Карта города</button></div>
+    <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="true">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
+    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lg-cl" style="border-color:#151717"></i>Место встречи у станции</span><span class="lg-sc" style="color:var(--muted)">Наведите на станцию — подсветим линию и соседей</span></div>
+    <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
+  </section>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
+<script>
+addEventListener('DOMContentLoaded',()=>{
+const D=JSON.parse(document.getElementById('data').textContent);
+const ADMIN=new URLSearchParams(location.search).has('admin');
+const LOGO='<circle cx="32" cy="32" r="32" fill="#151717"/><circle cx="32" cy="32" r="20.5" fill="none" stroke="#f5ce00" stroke-width="5.6"/><path d="M28.6 23.5v17c0 2 2.5 3 3.9 1.6l8.4-8.4c.9-.9.9-2.4 0-3.3l-8.4-8.5c-1.4-1.4-3.9-.4-3.9 1.6z" fill="#fff"/>';
+document.getElementById('logo').innerHTML=LOGO;
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fold=s=>String(s).toLowerCase().replaceAll('ё','е');
+const plural=(n,a,b,c)=>{const m=n%10,h=n%100;return n+' '+(m===1&&h!==11?a:m>=2&&m<=4&&(h<10||h>=20)?b:c)};
+const LINE={};D.lines.forEach(l=>LINE[l.n]=l);
+const lineColor=n=>(LINE[n]||{}).c||'#8a8f94';
+const KIND={'Метро':'метро','МЦК':'МЦК','МЦД':'МЦД'};
+const short=n=>n.replace('Большая кольцевая линия','БКЛ').replace('Таганско-Краснопресненская','Таганско-Краснопр.');
+
+/* stations that are meeting points, + every station referenced by an address */
+const ST={};D.stations.forEach(s=>ST[s.id]=s);
+const stationInfo=id=>(ST[id]&&ST[id].lon>36.5&&ST[id].lon!==ST[id].lat?ST[id]:null)||(D.allst[id]&&{id,...D.allst[id],n:D.allst[id].n,l:D.lines.filter(l=>l.st.includes(id)).map(l=>l.n),k:(D.lines.find(l=>l.st.includes(id))||{}).k||'Метро'});
+/* addresses within walking distance of each station */
+const AD_BY_ST={};D.points.forEach(p=>p.nb.forEach(n=>(AD_BY_ST[n.s]=AD_BY_ST[n.s]||[]).push({p,t:n.t,d:n.d})));
+
+const PLACES=[
+  ...D.stations.filter(s=>s.m).map(s=>({id:s.id,type:'st',name:s.n,lat:s.lat,lon:s.lon,kind:s.k,lines:s.l,kpp:s.kpp,raw:s})),
+  ...D.points.map(p=>({id:p.id,type:'ad',name:p.n,lat:p.lat,lon:p.lon,kind:'Адрес',lines:[],kpp:[],raw:p}))
+];
+PLACES.forEach(p=>{
+  if(p.type==='ad'){const n=p.raw.nb[0];p.near=n?{...n,st:stationInfo(n.s)}:null}
+  p.search=fold([p.name,...p.lines,p.kind,p.near?.st?.n||'',...(p.raw.nb||[]).map(n=>stationInfo(n.s)?.n||'')].join(' '));
+});
+const BY_ID=Object.fromEntries(PLACES.map(p=>[p.id,p]));
+
+/* ---------- state ---------- */
+const state={q:'',type:'all',kpp:new Set(),mcd:true,sel:null,lines:true};
+
+function visible(){
+  const q=fold(state.q.trim());
+  return PLACES.filter(p=>{
+    if(state.type!=='all'&&p.type!==state.type)return false;
+    if(!state.mcd&&p.type==='st'&&p.kind!=='Метро')return false;
+    if(state.kpp.size&&(p.type!=='st'||![...state.kpp].every(k=>p.kpp.includes(k))))return false;
+    if(q&&!p.search.includes(q))return false;
+    return true;
+  }).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+}
+
+/* ---------- list ---------- */
+function icon(p){
+  if(p.type==='ad')return `<span class="ico ad"><svg viewBox="0 0 64 64">${LOGO}</svg></span>`;
+  return `<span class="ico st" style="--c:${lineColor(p.lines[0])}">${p.kind==='МЦД'?'Д':p.kind==='МЦК'?'Ц':'М'}</span>`;
+}
+const dots=lines=>`<span class="dots">${lines.map(l=>`<i class="dot" style="--c:${lineColor(l)}" title="${esc(l)}"></i>`).join('')}</span>`;
+const kppTags=p=>p.kpp.map(k=>`<span class="tag">${k==='mt'?'МКПП':'АКПП'}</span>`).join('');
+function sub(p){
+  if(p.type==='st')return `${dots(p.lines)}<span>${esc(p.lines.length>1?p.lines.map(short).join(' · '):short(p.lines[0]||KIND[p.kind]))}</span>${kppTags(p)}`;
+  const n=p.near;let s=n?`<span class="tag walk">${n.t} мин пешком</span><span>${dots(n.st.l||[])} м. ${esc(n.st.n)}</span>`:'<span>Рядом нет станций в расчёте</span>';
+  if(ADMIN&&p.raw.c)s+='<span class="tag warn">уточнить</span>';
+  return s;
+}
+function renderList(){
+  const v=visible();
+  const nst=v.filter(p=>p.type==='st').length,nad=v.length-nst;
+  $('#list').innerHTML=v.length
+    ?`<div class="count">${plural(v.length,'место','места','мест')}${state.q?' по запросу':''}</div>`+v.map(p=>`<button class="item${state.sel===p.id?' active':''}" role="listitem" data-id="${p.id}">${icon(p)}<span><span class="t">${esc(p.name)}</span><span class="s">${sub(p)}</span></span></button>`).join('')
+    :`<div class="empty"><b>Ничего не нашли</b>Попробуйте название станции или улицы${state.kpp.size?', или снимите фильтр по коробке — для адресов он не указан':''}.</div>`;
+  $$('#list .item').forEach(b=>{
+    b.onclick=()=>select(b.dataset.id,true);
+    b.onmouseenter=()=>hover(b.dataset.id);b.onmouseleave=()=>hover(null);
+  });
+  updateMap(v);
+}
+
+/* ---------- detail ---------- */
+const ymPoint=p=>`https://yandex.ru/maps/?pt=${p.lon},${p.lat}&z=17&l=map`;
+const ymRoute=(a,b)=>`https://yandex.ru/maps/?rtext=${a?a.lat+','+a.lon:''}~${b.lat},${b.lon}&rtt=${a?'pd':'mt'}`;
+function nearRow(name,lines,t,d,href,id){
+  return `<li><button data-go="${id}"><div class="nm">${lines?dots(lines):''}${esc(name)}</div><div class="mt">${d?d+' м · ':''}<a href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">маршрут</a></div></button><div class="time">${t}<small> мин</small></div></li>`;
+}
+function renderDetail(p){
+  let h=`<button class="back" id="back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>Все места</button>`;
+  if(p.type==='st'){
+    const ads=(AD_BY_ST[p.id]||[]).sort((a,b)=>a.t-b.t);
+    h+=`<h2>${esc(p.name)}</h2><div class="kind">${p.lines.map(l=>`<span class="line-badge">${dots([l])}${esc(l)}</span>`).join('')}${kppTags(p)}</div>
+      <div class="how"><b>Место встречи</b>Инструктор встречает у станции ${p.kind==='МЦД'?'МЦД':p.kind==='МЦК'?'МЦК':'метро'}. Точный выход согласуйте при записи.</div>`;
+    if(ads.length)h+=`<div class="sec"><h3>Площадки рядом, пешком</h3><ul class="near">${ads.map(a=>nearRow(a.p.n,null,a.t,a.d,ymRoute(p,a.p),a.p.id)).join('')}</ul></div>`;
+    h+=`<div class="actions"><a class="btn primary" href="${ymRoute(null,p)}" target="_blank" rel="noopener">Как добраться</a><a class="btn" href="${ymPoint(p)}" target="_blank" rel="noopener">Яндекс Карты</a></div>`;
+  }else{
+    const r=p.raw;
+    h+=`<h2>${esc(p.name)}</h2><div class="kind"><span class="line-badge">${p.raw.pin?'Точка на карте':'Адрес'}</span></div>
+      <div class="how"><b>Место встречи</b>Инструктор ждёт по этому адресу. Ориентир у дома уточните при записи.</div>`;
+    h+=`<div class="sec"><h3>Ближайшие станции, пешком</h3>${r.nb.length?`<ul class="near">${r.nb.map(n=>{const s=stationInfo(n.s);return s?nearRow(s.n,s.l,n.t,n.d,ymRoute(s,p),ST[n.s]?.m?n.s:''):''}).join('')}</ul>`:'<p class="note">Станций в пешей доступности не найдено.</p>'}</div>`;
+    if(ADMIN&&r.c)h+=`<div class="warnbox">${esc(r.c)}</div>`;
+    h+=`<div class="actions"><a class="btn primary" href="${ymRoute(null,p)}" target="_blank" rel="noopener">Как добраться</a><a class="btn" href="${ymPoint(p)}" target="_blank" rel="noopener">Яндекс Карты</a></div>`;
+  }
+  h+=`<p class="note">Время пешком — расчёт по пешеходной сети OpenStreetMap при 5 км/ч, до центра станции. Реальное время зависит от выхода и светофоров.</p>`;
+  $('#detail').innerHTML=h;
+  $('#back').onclick=()=>select(null);
+  $$('#detail [data-go]').forEach(b=>{if(b.dataset.go)b.onclick=()=>select(b.dataset.go,true)});
+}
+
+function select(id,fly){
+  state.sel=id;
+  const p=id&&BY_ID[id];
+  $('#panel').classList.toggle('show-detail',!!p);
+  if(p){renderDetail(p);$('#detail').scrollTop=0;if(innerWidth<=820)$('#panel').scrollIntoView({behavior:'smooth'})}
+  $$('#list .item').forEach(b=>b.classList.toggle('active',b.dataset.id===id));
+  highlight(p,fly);schemeSelect(p,fly);
+}
+
+/* ---------- map ---------- */
+let map,ready=false;
+const fc=f=>({type:'FeatureCollection',features:f});
+const pt=(p,props)=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:props});
+function placeFeature(p){return pt(p,{id:p.id,type:p.type,name:p.name,color:p.type==='st'?lineColor(p.lines[0]):'#151717',kind:p.kind})}
+
+function initMap(){
+  try{
+    map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/positron',center:[37.62,55.75],zoom:9.3,minZoom:7,maxZoom:18,attributionControl:{compact:true},cooperativeGestures:innerWidth<=820,dragRotate:false,pitchWithRotate:false});
+  }catch(e){document.body.classList.add('no-map');return}
+  map.touchZoomRotate.disableRotation();
+  map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+  map.addControl(new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true}}),'top-right');
+  map.on('error',e=>console.warn(e.error));
+  map.on('load',()=>{
+    /* tone down the basemap so our data reads first */
+    for(const l of map.getStyle().layers){
+      if(l.type==='symbol'&&/poi|housenumber/.test(l.id))map.setLayoutProperty(l.id,'visibility','none');
+      if(l.type==='symbol'&&l.paint&&'text-color'in l.paint)map.setPaintProperty(l.id,'text-color','#8b9096');
+      if(l.type==='symbol'&&JSON.stringify(l.layout?.['text-field']||'').includes('name'))map.setLayoutProperty(l.id,'text-field',['coalesce',['get','name:ru'],['get','name']]);
+    }
+    const img=new Image(96,96);
+    img.onload=()=>{map.addImage('koleso',img,{pixelRatio:2});addLayers()};
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="-6 -6 76 76"><circle cx="32" cy="32" r="35" fill="#fff"/>${LOGO}</svg>`);
+  });
+}
+
+function addLayers(){
+  const allSt=Object.entries(D.allst).map(([id,s])=>pt(s,{id,name:s.n}));
+  map.addSource('lines',{type:'geojson',data:fc(D.lines.map(l=>({type:'Feature',geometry:{type:'MultiLineString',coordinates:l.g},properties:{c:l.c,k:l.k,n:l.n}})))});
+  map.addSource('allst',{type:'geojson',data:fc(allSt)});
+  map.addSource('places',{type:'geojson',data:fc([]),cluster:true,clusterRadius:42,clusterMaxZoom:11});
+  map.addSource('links',{type:'geojson',data:fc([])});
+  map.addSource('sel',{type:'geojson',data:fc([])});
+  const w=['interpolate',['linear'],['zoom'],8,1.6,11,3,14,5];
+  map.addLayer({id:'lines-casing',type:'line',source:'lines',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#fff','line-width':['interpolate',['linear'],['zoom'],8,3,11,5.5,14,8.5],'line-opacity':.9}});
+  map.addLayer({id:'lines-metro',type:'line',source:'lines',filter:['==',['get','k'],'Метро'],layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':['get','c'],'line-width':w,'line-opacity':.8}});
+  map.addLayer({id:'lines-rail',type:'line',source:'lines',filter:['!=',['get','k'],'Метро'],layout:{'line-join':'round'},paint:{'line-color':['get','c'],'line-width':w,'line-opacity':.75,'line-dasharray':[2,1.2]}});
+  map.addLayer({id:'allst',type:'circle',source:'allst',minzoom:11,paint:{'circle-radius':['interpolate',['linear'],['zoom'],11,2,15,4],'circle-color':'#fff','circle-stroke-color':'#9aa0a5','circle-stroke-width':1.2}});
+  map.addLayer({id:'allst-label',type:'symbol',source:'allst',minzoom:13.5,layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':11,'text-offset':[0,1],'text-anchor':'top','text-optional':true},paint:{'text-color':'#7c8288','text-halo-color':'#fff','text-halo-width':1.4}});
+  map.addLayer({id:'links',type:'line',source:'links',layout:{'line-cap':'round'},paint:{'line-color':'#151717','line-width':2,'line-dasharray':[0,2],'line-opacity':.7}});
+  map.addLayer({id:'clusters',type:'circle',source:'places',filter:['has','point_count'],paint:{'circle-color':'#f5ce00','circle-radius':['step',['get','point_count'],15,5,19,15,24],'circle-stroke-color':'#fff','circle-stroke-width':3}});
+  map.addLayer({id:'cluster-n',type:'symbol',source:'places',filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],'text-font':['Noto Sans Bold'],'text-size':14,'text-allow-overlap':true},paint:{'text-color':'#151717'}});
+  const single=['!',['has','point_count']];
+  map.addLayer({id:'st',type:'circle',source:'places',filter:['all',single,['==',['get','type'],'st']],paint:{'circle-radius':['interpolate',['linear'],['zoom'],9,6,14,9],'circle-color':['case',['boolean',['feature-state','hover'],false],'#fff6c7','#fff'],'circle-stroke-color':['get','color'],'circle-stroke-width':['interpolate',['linear'],['zoom'],9,3.5,14,4.5]}});
+  map.addLayer({id:'ad',type:'symbol',source:'places',filter:['all',single,['==',['get','type'],'ad']],layout:{'icon-image':'koleso','icon-size':['interpolate',['linear'],['zoom'],9,.62,14,.85],'icon-allow-overlap':true}});
+  map.addLayer({id:'place-label',type:'symbol',source:'places',filter:single,minzoom:11.5,layout:{'text-field':['get','name'],'text-font':['Noto Sans Bold'],'text-size':12.5,'text-variable-anchor':['left','right','top','bottom'],'text-radial-offset':1.7,'text-justify':'auto','text-max-width':10,'text-optional':true},paint:{'text-color':'#151717','text-halo-color':'#fff','text-halo-width':1.8}});
+  map.addLayer({id:'sel-ring',type:'circle',source:'sel',paint:{'circle-radius':20,'circle-color':'rgba(245,206,0,.28)','circle-stroke-color':'#151717','circle-stroke-width':2.5}});
+  map.moveLayer('st');map.moveLayer('ad');map.moveLayer('place-label');
+
+  const tip=new maplibregl.Popup({closeButton:false,closeOnClick:false,offset:14});
+  let hovered=null;
+  for(const id of ['st','ad']){
+    map.on('mousemove',id,e=>{map.getCanvas().style.cursor='pointer';const f=e.features[0];tip.setLngLat(f.geometry.coordinates).setText(f.properties.name).addTo(map);hoverList(f.properties.id)});
+    map.on('mouseleave',id,()=>{map.getCanvas().style.cursor='';tip.remove();hoverList(null)});
+    map.on('click',id,e=>select(e.features[0].properties.id,false));
+  }
+  map.on('mouseenter','clusters',()=>map.getCanvas().style.cursor='pointer');
+  map.on('mouseleave','clusters',()=>map.getCanvas().style.cursor='');
+  map.on('click','clusters',async e=>{const f=e.features[0];const z=await map.getSource('places').getClusterExpansionZoom(f.properties.cluster_id);map.easeTo({center:f.geometry.coordinates,zoom:z+.3})});
+  ready=true;renderList();highlight(state.sel&&BY_ID[state.sel],false);
+}
+
+let firstFit=true;
+function updateMap(v){
+  renderMarks();
+  if(!ready)return;
+  map.getSource('places').setData(fc(v.map(placeFeature)));
+  const pts=v.map(p=>[p.lon,p.lat]);
+  if(pts.length&&(state.q||firstFit)){
+    const b=pts.reduce((b,c)=>b.extend(c),new maplibregl.LngLatBounds(pts[0],pts[0]));
+    map.fitBounds(b,{padding:innerWidth<=820?40:{top:70,bottom:60,left:60,right:60},maxZoom:14,duration:firstFit?0:600});
+    firstFit=false;
+  }
+}
+function highlight(p,fly){
+  if(!ready)return;
+  map.getSource('sel').setData(fc(p?[pt(p,{})]:[]));
+  let links=[];
+  if(p){
+    const others=p.type==='ad'?p.raw.nb.map(n=>stationInfo(n.s)).filter(Boolean):(AD_BY_ST[p.id]||[]).map(a=>a.p);
+    links=others.map(o=>({type:'Feature',geometry:{type:'LineString',coordinates:[[p.lon,p.lat],[o.lon,o.lat]]},properties:{}}));
+    if(fly){
+      if(others.length){const b=others.reduce((b,o)=>b.extend([o.lon,o.lat]),new maplibregl.LngLatBounds([p.lon,p.lat],[p.lon,p.lat]));map.fitBounds(b,{padding:90,maxZoom:15.5,duration:700})}
+      else map.flyTo({center:[p.lon,p.lat],zoom:Math.max(map.getZoom(),14.5),duration:700});
+    }
+  }
+  map.getSource('links').setData(fc(links));
+}
+function hover(id){ /* list -> map */
+  if(sc.ready&&view==='scheme'){const p=id&&BY_ID[id];const sid=p&&(p.type==='st'?p.id:(p.raw.nb[0]||{}).s);if(sid)focusStation(sid);else if(sc.pinned){sc.focusId=null;focusStation(sc.pinned)}else focusStation(null)}
+  if(!ready)return;
+  map.getSource('sel').setData(fc(id?[pt(BY_ID[id],{})]:state.sel?[pt(BY_ID[state.sel],{})]:[]));
+}
+function hoverList(id){ /* map -> list */
+  $$('#list .item.hover').forEach(b=>b.classList.remove('hover'));
+  if(id){const b=$(`#list .item[data-id="${CSS.escape(id)}"]`);if(b){b.classList.add('hover');b.scrollIntoView({block:'nearest'})}}
+}
+
+/* ---------- metro scheme ---------- */
+const SC=D.scheme, SCHEME_URL=window.KOLESO_SCHEME_URL||'metro-scheme.svg';
+const NS='http://www.w3.org/2000/svg';
+const W0=1440,H0=1727;
+let sc={ready:false,vb:[0,0,W0,H0],svg:null,paths:[],boxes:null,lit:new Set(),labels:[],marks:{},focusId:null,pinned:null};
+const lineIdsOf=sid=>Object.entries(SC.lines).filter(([,l])=>l.st.includes(sid)).map(([id])=>id);
+const stName=sid=>(D.allst[sid]||{}).n||sid;
+const el=(n,a={},p)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e};
+
+async function loadScheme(){
+  if(sc.loading)return;sc.loading=true;
+  try{
+    const r=await fetch(SCHEME_URL);if(!r.ok)throw Error(r.status);
+    const txt=await r.text();
+    const geo=new DOMParser().parseFromString(txt,'image/svg+xml').documentElement;
+    const svg=el('svg',{viewBox:sc.vb.join(' '),'aria-label':'Схема метро Москвы с местами занятий',role:'img'});
+    const g=el('g',{id:'geo'},svg);
+    for(const n of [...geo.childNodes])g.appendChild(document.importNode(n,true));
+    el('circle',{class:'spot',id:'spot',r:0,cx:-99,cy:-99},svg);
+    const lg=el('g',{id:'labels'},svg), mg=el('g',{id:'marks'},svg);
+    el('circle',{class:'ring',id:'ring',r:0,cx:-99,cy:-99},svg);
+    SC.labels.forEach((l,i)=>{
+      const t=el('text',{class:'lb'+(l.fix?' fixed':''),x:l.x,y:l.y,'text-anchor':{s:'start',e:'end',m:'middle'}[l.a],'data-i':i},lg);
+      l.t.forEach((s,k)=>{const ts=el('tspan',{x:l.x,dy:k?'1.15em':0},t);ts.textContent=s});
+      l.el=t;
+    });
+    /* invisible hit targets on station positions */
+    for(const[sid,[x,y]]of Object.entries(SC.pos))el('circle',{class:'hit',cx:x,cy:y,r:9,'data-sid':sid},mg);
+    $('#scheme').replaceChildren(svg);sc.svg=svg;
+    sc.paths=[...g.querySelectorAll('path')].filter(p=>!p.closest('clipPath'));
+    sc.paths.forEach(p=>{const f=(p.getAttribute('fill')||'').toLowerCase();p._f=f;if(f==='#fff'||f==='#ffffff'||f==='#fdfdfd')p.classList.add('w')});
+    sc.ready=true;bindScheme();renderMarks();fitScheme();
+    (window.requestIdleCallback||setTimeout)(measurePaths);
+    if(state.sel)schemeSelect(BY_ID[state.sel],true);
+  }catch(e){console.warn(e);$('#sc-msg').textContent='Схема метро не загрузилась. Переключитесь на «Карту города».'}
+}
+function measurePaths(){ /* bbox of every path in scheme coordinates, once */
+  const inv=sc.svg.getScreenCTM().inverse();
+  sc.boxes=sc.paths.map(p=>{const b=p.getBBox(),m=inv.multiply(p.getScreenCTM());
+    const xs=[b.x,b.x+b.width],ys=[b.y,b.y+b.height];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const x of xs)for(const y of ys){const X=m.a*x+m.c*y+m.e,Y=m.b*x+m.d*y+m.f;x0=Math.min(x0,X);x1=Math.max(x1,X);y0=Math.min(y0,Y);y1=Math.max(y1,Y)}
+    return[x0,y0,x1,y1]});
+}
+/* stations to light up: same line ±3 stops, plus anything within radius */
+const RADIUS=120,HOPS=3;
+function neighbourhood(sid){
+  const set=new Set([sid]),lids=lineIdsOf(sid),c=SC.pos[sid];
+  for(const lid of lids){const st=SC.lines[lid].st,i=st.indexOf(sid),ring=['5','95','97'].includes(lid);
+    for(let k=-HOPS;k<=HOPS;k++){let j=i+k;if(ring)j=(j+st.length)%st.length;if(st[j])set.add(st[j])}}
+  if(c)for(const[s,[x,y]]of Object.entries(SC.pos))if(Math.hypot(x-c[0],y-c[1])<RADIUS)set.add(s);
+  return{set,lids,c};
+}
+function focusStation(sid){
+  if(!sc.ready||sc.focusId===sid)return;sc.focusId=sid;
+  const root=sc.svg;
+  if(!sid){root.classList.remove('focus');sc.lit.forEach(p=>p.classList.remove('on'));sc.lit.clear();SC.labels.forEach(l=>l.el.classList.remove('on','cur'));setSpot(null);Object.values(sc.marks).forEach(m=>m.classList.remove('on'));return}
+  const{set,lids,c}=neighbourhood(sid);
+  const cols=new Set(lids.flatMap(l=>SC.lines[l].pdf));
+  const next=new Set();
+  sc.paths.forEach((p,i)=>{
+    if(cols.has(p._f)){next.add(p);return}
+    if(c&&sc.boxes){const[x0,y0,x1,y1]=sc.boxes[i];const dx=Math.max(x0-c[0],0,c[0]-x1),dy=Math.max(y0-c[1],0,c[1]-y1);if(dx*dx+dy*dy<RADIUS*RADIUS&&(x1-x0)<RADIUS*3&&(y1-y0)<RADIUS*3)next.add(p)}
+  });
+  sc.lit.forEach(p=>{if(!next.has(p))p.classList.remove('on')});next.forEach(p=>p.classList.add('on'));sc.lit=next;
+  SC.labels.forEach(l=>{const on=l.ids.some(s=>set.has(s));l.el.classList.toggle('on',on);l.el.classList.toggle('cur',l.ids.includes(sid))});
+  Object.entries(sc.marks).forEach(([s,m])=>m.classList.toggle('on',set.has(s)));
+  root.classList.add('focus');setSpot(c);
+}
+function setSpot(c){const s=$('#spot');if(!c){s.setAttribute('r',0);return}s.setAttribute('cx',c[0]);s.setAttribute('cy',c[1]);s.setAttribute('r',RADIUS)}
+function card(sid,evt){
+  const box=$('#sc-card');if(!sid){box.hidden=true;return}
+  const lids=lineIdsOf(sid),meet=PLACES.find(p=>p.type==='st'&&p.id===sid),ads=(AD_BY_ST[sid]||[]).sort((a,b)=>a.t-b.t);
+  box.innerHTML=`<b>${esc(stName(sid))}</b>${lids.map(l=>`<div class="r">${dots([SC.lines[l].n])}${esc(SC.lines[l].n)}</div>`).join('')}`+
+    (meet?`<div class="r ok">● Инструктор встречает здесь${meet.kpp.length?' · '+meet.kpp.map(k=>k==='mt'?'МКПП':'АКПП').join(', '):''}</div>`:'')+
+    (ads.length?`<div class="r">Площадки рядом: ${ads.slice(0,2).map(a=>esc(a.p.n)+' — '+a.t+' мин').join('; ')}</div>`:'')+
+    (!meet&&!ads.length?'<div class="r" style="color:var(--muted)">Занятий у этой станции нет</div>':'');
+  const r=$('#scheme').getBoundingClientRect();let x=evt.clientX-r.left+16,y=evt.clientY-r.top+16;
+  box.hidden=false;if(x+box.offsetWidth>r.width-8)x=evt.clientX-r.left-box.offsetWidth-16;if(y+box.offsetHeight>r.height-8)y=evt.clientY-r.top-box.offsetHeight-16;
+  box.style.left=x+'px';box.style.top=y+'px';
+}
+function renderMarks(){
+  if(!sc.ready)return;const mg=$('#marks');Object.values(sc.marks).forEach(m=>m.remove());sc.marks={};
+  for(const p of visible()){if(p.type!=='st'||!SC.pos[p.id])continue;const[x,y]=SC.pos[p.id];
+    sc.marks[p.id]=el('circle',{class:'mk',cx:x,cy:y,r:6.5},mg);}
+  SC.labels.forEach(l=>l.el.classList.toggle('meet',l.ids.some(s=>sc.marks[s])));
+}
+function sidFromEvent(e){const t=e.target.closest('[data-sid],[data-i]');if(!t)return null;if(t.dataset.sid)return t.dataset.sid;const l=SC.labels[+t.dataset.i];
+  return l.ids.find(s=>sc.marks[s])||l.ids[0]||null}
+function bindScheme(){
+  const box=$('#scheme');let drag=null,moved=false;const ptrs=new Map();
+  box.addEventListener('pointermove',e=>{
+    if(ptrs.has(e.pointerId)){ptrs.set(e.pointerId,e);
+      if(ptrs.size===2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(drag.d)zoomAt(drag.d/d,(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2);drag.d=d;return}
+      if(drag){const k=sc.vb[2]/box.clientWidth;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;if(moved){sc.vb[0]-=dx*k;sc.vb[1]-=dy*k;drag.x=e.clientX;drag.y=e.clientY;applyVB();box.classList.add('drag');card(null)}}
+      return}
+    if(e.pointerType!=='mouse')return;
+    const sid=sidFromEvent(e);
+    if(sid){focusStation(sid);card(sid,e);hoverList(sc.marks[sid]?sid:null)}else if(!sc.pinned){focusStation(null);card(null);hoverList(null)}else{card(null)}
+  });
+  box.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,e);box.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};moved=false});
+  const up=e=>{ptrs.delete(e.pointerId);box.classList.remove('drag');
+    if(!moved&&ptrs.size===0){const sid=sidFromEvent(e);
+      if(sid&&BY_ID[sid])select(sid,false);
+      else if(sid){sc.pinned=sid;sc.focusId=null;focusStation(sid);card(sid,e)}
+      else{sc.pinned=null;if(state.sel)select(null);else{focusStation(null);card(null)}}}
+    if(!ptrs.size)drag=null};
+  box.addEventListener('pointerup',up);box.addEventListener('pointercancel',up);
+  box.addEventListener('pointerleave',()=>{if(!sc.pinned&&!state.sel){focusStation(null);card(null)}});
+  box.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(e.deltaY*(e.ctrlKey?.01:.0018)),e.clientX,e.clientY);card(null)},{passive:false});
+  $$('#sc-zoom button').forEach(b=>b.onclick=()=>{const z=+b.dataset.z;if(!z)return fitScheme(true);const r=box.getBoundingClientRect();zoomAt(1/z,r.left+r.width/2,r.top+r.height/2,true)});
+}
+function applyVB(){sc.svg.setAttribute('viewBox',sc.vb.map(v=>v.toFixed(1)).join(' '))}
+function zoomAt(f,cx,cy,anim){
+  const r=$('#scheme').getBoundingClientRect(),[x,y,w,h]=sc.vb;
+  const nw=Math.min(Math.max(w*f,140),W0*1.6),k=nw/w;
+  const px=x+(cx-r.left)/r.width*w,py=y+(cy-r.top)/r.height*h;
+  animVB([px-(px-x)*k,py-(py-y)*k,nw,h*k],anim?220:0);
+}
+function fitScheme(anim){const r=$('#scheme').getBoundingClientRect(),a=r.width/r.height;
+  let w=W0,h=H0;if(w/h<a)w=h*a;else h=w/a;animVB([(W0-w)/2,(H0-h)/2,w,h],anim?300:0)}
+function animVB(to,ms){
+  if(!ms){sc.vb=to;applyVB();return}
+  const from=[...sc.vb],t0=performance.now();
+  const step=t=>{const k=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-k,3);sc.vb=from.map((v,i)=>v+(to[i]-v)*e);applyVB();if(k<1)requestAnimationFrame(step)};
+  requestAnimationFrame(step);
+}
+function schemeSelect(p,fly){
+  if(!sc.ready)return;
+  const ring=$('#ring');
+  if(!p){ring.setAttribute('r',0);sc.pinned=null;focusStation(null);card(null);return}
+  const sid=p.type==='st'?p.id:(p.raw.nb.find(n=>SC.pos[n.s])||{}).s;
+  if(!sid||!SC.pos[sid]){ring.setAttribute('r',0);return}
+  const[x,y]=SC.pos[sid];ring.setAttribute('cx',x);ring.setAttribute('cy',y);ring.setAttribute('r',13);
+  sc.pinned=sid;sc.focusId=null;focusStation(sid);
+  if(fly){const r=$('#scheme').getBoundingClientRect(),w=Math.min(sc.vb[2],520),h=w*r.height/r.width;animVB([x-w/2,y-h/2,w,h],350)}
+}
+
+/* ---------- view switching ---------- */
+let view='scheme';
+function setView(v){
+  view=v;$('#app').classList.toggle('is-scheme',v==='scheme');$('#app').classList.toggle('is-map',v==='map');
+  $('#v-scheme').setAttribute('aria-selected',v==='scheme');$('#v-map').setAttribute('aria-selected',v==='map');
+  $('#scheme').hidden=v!=='scheme';$('#sc-zoom').hidden=v!=='scheme';$('#map').style.visibility=v==='map'?'visible':'hidden';card(null);
+  if(v==='scheme')loadScheme();
+  if(v==='map'){if(!map&&window.maplibregl)initMap();else if(map){map.resize();highlight(state.sel&&BY_ID[state.sel],true)}}
+}
+$('#v-scheme').onclick=()=>setView('scheme');$('#v-map').onclick=()=>setView('map');
+
+/* ---------- controls ---------- */
+const nst=PLACES.filter(p=>p.type==='st').length,nad=PLACES.length-nst;
+$('#n-st').textContent=nst;$('#n-ad').textContent=nad;
+$('#stats').innerHTML=`<div class="stat"><b>${PLACES.length}</b><span>мест встречи</span></div><div class="stat"><b>${nst}</b><span>у метро и МЦД</span></div><div class="stat"><b>${nad}</b><span>по адресу</span></div>`;
+$('#foot').textContent=`Данные обновлены ${D.date}. Карта © OpenStreetMap, OpenFreeMap.`;
+let t;$('#q').oninput=e=>{state.q=e.target.value;$('#searchbox').classList.toggle('has-value',!!state.q);clearTimeout(t);t=setTimeout(()=>{if(state.sel)select(null);renderList()},120)};
+$('#clear').onclick=()=>{$('#q').value='';$('#q').dispatchEvent(new Event('input'));$('#q').focus()};
+$$('.seg button').forEach(b=>b.onclick=()=>{state.type=b.dataset.type;$$('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b));select(null);renderList()});
+$$('[data-kpp]').forEach(b=>b.onclick=()=>{const k=b.dataset.kpp;state.kpp.has(k)?state.kpp.delete(k):state.kpp.add(k);b.setAttribute('aria-pressed',state.kpp.has(k));select(null);renderList()});
+$('#mcd').onclick=e=>{state.mcd=!state.mcd;e.currentTarget.setAttribute('aria-pressed',state.mcd);select(null);renderList()};
+$('#toggle-lines').onclick=e=>{state.lines=!state.lines;e.currentTarget.setAttribute('aria-pressed',state.lines);if(ready)for(const l of['lines-casing','lines-metro','lines-rail','allst','allst-label'])map.setLayoutProperty(l,'visibility',state.lines?'visible':'none')};
+addEventListener('keydown',e=>{if(e.key==='Escape'&&state.sel)select(null)});
+
+renderList();
+setView(new URLSearchParams(location.search).get('view')==='map'?'map':'scheme');
+});
+</script>
+</body>
+</html>
