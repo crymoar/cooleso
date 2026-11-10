@@ -36,7 +36,17 @@ for l in d['network']:
     lines.append({'id':l['id'],'n':l['name'],'c':l['color'],'k':l['kind'],'g':parts,'st':[s['id'] for s in l['stations']]})
 allst={s['id']:{'n':s['name'],'lat':r5(s['lat']),'lon':r5(s['lon'])} for l in d['network'] for s in l['stations'] if not bad(s)}
 print('dropped',dropped,file=sys.stderr)
-out={'date':d['meta']['date'],'stations':stations,'points':points,'lines':lines,'allst':allst,'issues':d['issues']}
+svc=[]
+byname={}
+for l in d['network']:
+    for st in l['stations']: byname.setdefault(fold(st['name']),st['id'])
+for x in d['legacyStations']:
+    k=x['kinds']
+    if not any(c in k for c in ('office','moto_indoor','moto_outdoor')): continue
+    sid=byname.get(fold(x['name']))
+    st=next((s0 for l in d['network'] for s0 in l['stations'] if s0['id']==sid),None)
+    svc.append({'id':x['id'],'k':k[0],'n':x['name'],'sid':sid,'note':x.get('note',''),'lat':r5(st['lat']) if st else None,'lon':r5(st['lon']) if st else None})
+out={'svc':svc,'date':d['meta']['date'],'stations':stations,'points':points,'lines':lines,'allst':allst,'issues':d['issues']}
 s=json.dumps(out,ensure_ascii=False,separators=(',',':'))
 print(len(s.encode()),file=sys.stderr)
 print(s)

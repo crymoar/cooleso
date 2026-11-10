@@ -127,11 +127,11 @@ button{cursor:pointer}
 .glow.on{opacity:.95}
 
 .hit{fill:transparent;cursor:pointer}
-#veil{fill:#fff;opacity:0;transition:opacity .15s ease;pointer-events:none}
+#veil{fill:#fff;opacity:0;transition:opacity .35s ease;pointer-events:none}
 #veil.on{opacity:.78}
 .pin{pointer-events:none;transition:opacity .25s}
 .pin.hide{opacity:0}
-.sc-card{position:absolute;z-index:6;width:min(280px,calc(100% - 24px));padding:12px 14px 13px;border-radius:14px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
+.sc-card{position:absolute;z-index:6;transition-delay:.12s;width:min(280px,calc(100% - 24px));padding:12px 14px 13px;border-radius:14px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
 .sc-card.on{opacity:1;transform:none;pointer-events:auto}
 .sc-card .from{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}
 .sc-card b{display:block;font-size:16px;font-weight:800;line-height:1.2}
@@ -145,6 +145,8 @@ button{cursor:pointer}
 .sc-zoom{position:absolute;right:14px;bottom:14px;z-index:5;display:flex;flex-direction:column;border-radius:12px;background:#fff;box-shadow:var(--shadow);overflow:hidden}
 .sc-zoom button{width:40px;height:40px;border:0;background:none;font-size:20px;font-weight:600}
 .sc-zoom button+button{border-top:1px solid var(--line)}
+.lr{width:14px;height:14px;border-radius:50%;border:3.5px solid var(--c);display:inline-block}.lr2{border-color:#e7a329 #228cda #228cda #e7a329;transform:rotate(45deg)}
+.legend{flex-wrap:wrap;max-width:calc(100% - 90px)}
 .is-map .lg-sc{display:none}.is-scheme .lg-mp{display:none}
 .legend{position:absolute;left:14px;bottom:14px;z-index:3;display:flex;gap:14px;align-items:center;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.95);box-shadow:var(--shadow);font-size:12.5px;font-weight:700;color:var(--ink-2)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
@@ -197,6 +199,7 @@ button{cursor:pointer}
         <button data-type="all" aria-pressed="true">Все</button>
         <button data-type="st" aria-pressed="false">У метро<span class="n" id="n-st"></span></button>
         <button data-type="ad" aria-pressed="false">По адресу<span class="n" id="n-ad"></span></button>
+        <button data-type="svc" aria-pressed="false">Офисы, мото</button>
       </div>
       <div class="chips" role="group" aria-label="Фильтры">
         <button class="chip" data-kpp="mt" aria-pressed="false"><span class="tick">✓</span>Механика</button>
@@ -215,7 +218,7 @@ button{cursor:pointer}
     <div class="views" role="tablist" aria-label="Вид"><button role="tab" id="v-scheme" aria-selected="true">Схема метро</button><button role="tab" id="v-map" aria-selected="false">Карта города</button></div>
     <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="true">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
-    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><b style="font-weight:800">Жирным</b> — здесь встречает инструктор</span><span class="lg-sc" style="color:var(--muted)">Наведите на станцию — покажем ближайшее место занятий</span></div>
+    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lr" style="--c:#e7a329"></i>МКПП</span><span class="lg-sc"><i class="lr" style="--c:#228cda"></i>АКПП</span><span class="lg-sc"><i class="lr lr2" style="--c:#228cda"></i>Обе</span><span class="lg-sc"><i class="lr" style="--c:#4b4f54"></i>Коробка уточняется</span><span class="lg-sc"><i class="lr" style="--c:#247958"></i>Офис</span><span class="lg-sc"><i class="lr" style="--c:#168c91"></i>Мото</span></div>
     <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
   </section>
 </div>
@@ -247,7 +250,9 @@ const AD_BY_ST={};D.points.forEach(p=>p.nb.forEach(n=>(AD_BY_ST[n.s]=AD_BY_ST[n.
 
 const PLACES=[
   ...D.stations.filter(s=>s.m).map(s=>({id:s.id,type:'st',name:s.n,lat:s.lat,lon:s.lon,kind:s.k,lines:s.l,kpp:s.kpp,raw:s})),
-  ...D.points.map(p=>({id:p.id,type:'ad',name:p.n,lat:p.lat,lon:p.lon,kind:'Адрес',lines:[],kpp:[],raw:p}))
+  ...D.points.map(p=>({id:p.id,type:'ad',name:p.n,lat:p.lat,lon:p.lon,kind:'Адрес',lines:[],kpp:[],raw:p})),
+  ...D.svc.filter(s=>s.sid).map(s=>{const st=D.allst[s.sid]||{};const L=D.lines.filter(l=>l.st.includes(s.sid)).map(l=>l.n);
+    return{id:s.id,type:s.k==='office'?'of':'mo',sub:s.k,name:s.k==='office'?'Офис «Колесо» · '+s.n:'Мотоплощадка · '+s.n,station:s.n,sid:s.sid,lat:s.lat,lon:s.lon,kind:s.k==='office'?'Офис':'Мото',lines:L,kpp:[],note:s.note,raw:s}})
 ];
 PLACES.forEach(p=>{
   if(p.type==='ad'){const n=p.raw.nb[0];p.near=n?{...n,st:stationInfo(n.s)}:null}
@@ -261,7 +266,7 @@ const state={q:'',type:'all',kpp:new Set(),mcd:true,sel:null,lines:true};
 function visible(){
   const q=fold(state.q.trim());
   return PLACES.filter(p=>{
-    if(state.type!=='all'&&p.type!==state.type)return false;
+    if(state.type!=='all'&&(state.type==='svc'?!(p.type==='of'||p.type==='mo'):p.type!==state.type))return false;
     if(!state.mcd&&p.type==='st'&&p.kind!=='Метро')return false;
     if(state.kpp.size&&(p.type!=='st'||![...state.kpp].every(k=>p.kpp.includes(k))))return false;
     if(q&&!p.search.includes(q))return false;
@@ -271,12 +276,16 @@ function visible(){
 
 /* ---------- list ---------- */
 function icon(p){
+  if(p.type==='of'||p.type==='mo')return `<span class="ico" style="background:${SVC[svcOf(p)]};color:#fff">${p.type==='of'?'О':'М'}</span>`;
   if(p.type==='ad')return `<span class="ico ad"><svg viewBox="0 0 64 64">${LOGO}</svg></span>`;
   return `<span class="ico st" style="--c:${lineColor(p.lines[0])}">${p.kind==='МЦД'?'Д':p.kind==='МЦК'?'Ц':'М'}</span>`;
 }
 const dots=lines=>`<span class="dots">${lines.map(l=>`<i class="dot" style="--c:${lineColor(l)}" title="${esc(l)}"></i>`).join('')}</span>`;
-const kppTags=p=>p.kpp.map(k=>`<span class="tag">${k==='mt'?'МКПП':'АКПП'}</span>`).join('');
+const SVC={mt:'#e7a329',at:'#228cda',office:'#247958',moto:'#168c91',none:'#4b4f54'};
+const svcOf=p=>p.type==='of'?'office':p.type==='mo'?'moto':p.kpp.length===2?'both':p.kpp[0]||'none';
+const kppTags=p=>p.kpp.map(k=>`<span class="tag" style="background:${SVC[k]}1f;color:${k==='mt'?'#8a5a00':SVC[k]}">${k==='mt'?'МКПП':'АКПП'}</span>`).join('');
 function sub(p){
+  if(p.type==='of'||p.type==='mo')return `${dots(p.lines)}<span>м. ${esc(p.station)}</span><span class="tag" style="background:${SVC[svcOf(p)]}1f;color:${SVC[svcOf(p)]}">${p.type==='of'?'Офис':p.sub==='moto_indoor'?'Мото · в помещении':'Мото · на улице'}</span>`;
   if(p.type==='st')return `${dots(p.lines)}<span>${esc(p.lines.length>1?p.lines.map(short).join(' · '):short(p.lines[0]||KIND[p.kind]))}</span>${kppTags(p)}`;
   const n=p.near;let s=n?`<span class="tag walk">${n.t} мин пешком</span><span>${dots(n.st.l||[])} м. ${esc(n.st.n)}</span>`:'<span>Рядом нет станций в расчёте</span>';
   if(ADMIN&&p.raw.c)s+='<span class="tag warn">уточнить</span>';
@@ -303,7 +312,12 @@ function nearRow(name,lines,t,d,href,id){
 }
 function renderDetail(p){
   let h=`<button class="back" id="back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>Все места</button>`;
-  if(p.type==='st'){
+  if(p.type==='of'||p.type==='mo'){
+    const st={lat:p.lat,lon:p.lon};
+    h+=`<h2>${esc(p.name)}</h2><div class="kind">${p.lines.map(l=>`<span class="line-badge">${dots([l])}${esc(l)}</span>`).join('')}</div>
+      <div class="how"><b>${p.type==='of'?'Офис автошколы':'Мотоплощадка'}</b>${p.type==='of'?esc((p.note||'').split('\n').slice(1).join(' ')||'У станции '+p.station):(p.sub==='moto_indoor'?'Занятия в помещении':'Занятия на открытой площадке')+', м. '+esc(p.station)+'.'}</div>`;
+    h+=`<div class="actions"><a class="btn primary" href="${ymRoute(null,st)}" target="_blank" rel="noopener">Как добраться</a><a class="btn" href="${ymPoint(st)}" target="_blank" rel="noopener">Яндекс Карты</a></div>`;
+  }else if(p.type==='st'){
     const ads=(AD_BY_ST[p.id]||[]).sort((a,b)=>a.t-b.t);
     h+=`<h2>${esc(p.name)}</h2><div class="kind">${p.lines.map(l=>`<span class="line-badge">${dots([l])}${esc(l)}</span>`).join('')}${kppTags(p)}</div>
       <div class="how"><b>Место встречи</b>Инструктор встречает у станции ${p.kind==='МЦД'?'МЦД':p.kind==='МЦК'?'МЦК':'метро'}. Точный выход согласуйте при записи.</div>`;
@@ -336,7 +350,7 @@ function select(id,fly){
 let map,ready=false;
 const fc=f=>({type:'FeatureCollection',features:f});
 const pt=(p,props)=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lon,p.lat]},properties:props});
-function placeFeature(p){return pt(p,{id:p.id,type:p.type,name:p.name,color:p.type==='st'?lineColor(p.lines[0]):'#151717',kind:p.kind})}
+function placeFeature(p){const sv=svcOf(p);return pt(p,{id:p.id,type:p.type==='ad'?'ad':'st',name:p.name,color:sv==='both'?SVC.at:SVC[sv]||lineColor(p.lines[0]),kind:p.kind})}
 
 function initMap(){
   try{
@@ -440,7 +454,8 @@ const SPOT_R=230, PICK_R=60, SEEK_R=420, GLOW_R=24;
 SC.k={};
 let sc={ready:false,loading:false,vb:[...VB0],tvb:null,svg:null,k:1,glows:{},target:null,pinned:null,spot:{x:0,y:0,r:0,tx:0,ty:0,tr:0}};
 
-function meetIds(){return new Set(visible().filter(p=>p.type==='st'&&SC.pos[p.id]).map(p=>p.id))}
+PLACES.forEach(p=>{if(p.sid&&SC.pos[p.sid])SC.pos[p.id]=SC.pos[p.sid]});
+function meetIds(){return new Set(visible().filter(p=>p.type!=='ad'&&SC.pos[p.id]).map(p=>p.id))}
 let MEET=new Set();
 
 async function loadScheme(){
@@ -462,6 +477,7 @@ async function loadScheme(){
     return{el:g,id,ids:id?[id]:[]};
   }).filter(Boolean);
   sc.veil=el('path',{id:'veil','fill-rule':'evenodd',d:''},svg);
+  sc.gMarks=el('g',{id:'marks'});svg.querySelector('#labels').before(sc.gMarks);
   sc.gPins=el('g',{id:'pins'},svg);
   sc.svg=svg;sc.gGlow=gGlow;
   sc.ready=true;bindScheme();renderMarks();startView();
@@ -471,10 +487,27 @@ function startView(){const r=$('#scheme').getBoundingClientRect(),w=Math.min(150
 
 /* meeting markers: highlighter glow under the line + bold label; pins appear when zoomed in */
 const PIN=`<path d="M0 0C-3-5-11-10-11-18a11 11 0 1 1 22 0C11-10 3-5 0 0Z" fill="#151717" stroke="#fff" stroke-width="2"/><circle cx="0" cy="-18" r="6.2" fill="none" stroke="#f5ce00" stroke-width="2.4"/><path d="M-1.4-21.2v6.4l4.4-3.2z" fill="#fff"/>`;
+function marker(p,x,y){
+  /* ring around the station, coloured by category; both gearboxes = split ring */
+  const g=el('g',{class:'mk'},sc.gMarks),R=15,sv=svcOf(p);
+  el('circle',{cx:x,cy:y,r:R,fill:'none',stroke:'#fff','stroke-width':9},g);
+  if(sv==='both'){
+    el('path',{d:`M${x} ${y-R}A${R} ${R} 0 0 0 ${x} ${y+R}`,fill:'none',stroke:SVC.mt,'stroke-width':5},g);
+    el('path',{d:`M${x} ${y-R}A${R} ${R} 0 0 1 ${x} ${y+R}`,fill:'none',stroke:SVC.at,'stroke-width':5},g);
+  }else el('circle',{cx:x,cy:y,r:R,fill:'none',stroke:SVC[sv],'stroke-width':sv==='office'||sv==='moto'?6:5},g);
+  if(sv==='office'||sv==='moto'){const b=el('g',{transform:`translate(${x+R*.72} ${y-R*.72})`},g);
+    el('circle',{r:9,fill:SVC[sv],stroke:'#fff','stroke-width':2.5},b);
+    const tx=el('text',{y:4,'text-anchor':'middle','font-size':12,'font-weight':800,fill:'#fff'},b);tx.textContent=sv==='office'?'О':'М';}
+  return g;
+}
 function renderMarks(){
   if(!sc.ready)return;MEET=meetIds();
-  sc.gGlow.replaceChildren();sc.gPins.replaceChildren();sc.glows={};sc.pins={};
-  for(const id of MEET){const[x,y]=SC.pos[id];
+  sc.gMarks.replaceChildren();sc.gPins.replaceChildren();sc.pins={};
+  const seen={};
+  for(const id of MEET){const[x,y]=SC.pos[id];const key=x+','+y;
+    /* several categories at one station: offset rings slightly so both show */
+    const n=seen[key]=(seen[key]||0)+1;
+    marker(BY_ID[id],x+(n-1)*7,y-(n-1)*7);
     const g=el('g',{class:'pin hide','data-x':x,'data-y':y},sc.gPins);g.innerHTML=PIN;sc.pins[id]=g;}
   sc.labels.forEach(l=>l.el.classList.toggle('meet',l.ids.some(i=>MEET.has(i))));
   if(sc.target&&!MEET.has(sc.target))setTarget(null);
@@ -498,12 +531,27 @@ function stopsBetween(from,toId){ /* stops along the same line, if any */
 }
 
 /* spotlight target */
-function setTarget(id,fromStation){
-  sc.target=id;sc.from=fromStation||null;
-  if(id){const[x,y]=SC.pos[id],R=SPOT_R;
-    sc.veil.setAttribute('d',`M-6000-6000H9000V9000H-6000Z M${x-R} ${y}a${R} ${R} 0 1 0 ${2*R} 0a${R} ${R} 0 1 0 ${-2*R} 0Z`)}
-  sc.veil.classList.toggle('on',!!id);
-  renderCard();layoutPins();hoverList(id);
+const HOVER_DELAY=220, GROW_MS=480, MOVE_MS=320;
+let hoverT=null, spotAnim=0, spot={x:0,y:0,r:0,on:false};
+function drawSpot(){const{x,y,r}=spot;sc.veil.setAttribute('d',r>0.5?`M-6000-6000H9000V9000H-6000Z M${x-r} ${y}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z`:'M-6000-6000H9000V9000H-6000Z')}
+function animateSpot(to,ms){
+  cancelAnimationFrame(spotAnim);const from={...spot},t0=performance.now();
+  const f=now=>{const k=Math.min(1,(now-t0)/ms),e=1-Math.pow(1-k,3);
+    spot.x=from.x+(to.x-from.x)*e;spot.y=from.y+(to.y-from.y)*e;spot.r=from.r+(to.r-from.r)*e;drawSpot();
+    if(k<1)spotAnim=requestAnimationFrame(f)};
+  spotAnim=requestAnimationFrame(f);
+}
+function setTarget(id,fromStation,now){
+  clearTimeout(hoverT);
+  if(!id){sc.target=null;sc.from=null;sc.veil.classList.remove('on');spot.on=false;renderCard();layoutPins();hoverList(null);return}
+  if(id===sc.target&&spot.on){sc.from=fromStation||sc.from;renderCard();return}
+  const go=()=>{
+    const[x,y]=SC.pos[id];sc.target=id;sc.from=fromStation||null;
+    if(spot.on)animateSpot({x,y,r:SPOT_R},MOVE_MS);
+    else{spot={x,y,r:0,on:true};drawSpot();animateSpot({x,y,r:SPOT_R},GROW_MS)}
+    sc.veil.classList.add('on');renderCard();layoutPins();hoverList(id);
+  };
+  if(now||spot.on)go();else hoverT=setTimeout(go,HOVER_DELAY);
 }
 
 /* view box easing runs only while zooming */
@@ -527,9 +575,10 @@ function renderCard(){
   if(!id){box.classList.remove('on');return}
   const p=BY_ID[id],ads=(AD_BY_ST[id]||[]).sort((a,b)=>a.t-b.t);
   let from='';
-  if(sc.from&&sc.from.id!==id){const n=stopsBetween(sc.from,id);from=`<div class="from">От «${esc(sc.from.n)}» ближайшее место занятий${n?` — ${plural(n,'остановка','остановки','остановок')}`:''}</div>`}
+  if(sc.from&&sc.from.id!==id&&sc.from.id!==p.sid){const n=stopsBetween(sc.from,id);from=`<div class="from">От «${esc(sc.from.n)}» ближайшее место занятий${n?` — ${plural(n,'остановка','остановки','остановок')}`:''}</div>`}
   box.innerHTML=from+`<b>${esc(p.name)}</b><div class="r">${p.lines.map(l=>`${dots([l])}${esc(short(l))}`).join(' · ')}</div>`+
-    `<div class="r ok">Инструктор встречает у станции${p.kpp.length?' · '+p.kpp.map(k=>k==='mt'?'МКПП':'АКПП').join(', '):''}</div>`+
+    (p.type==='of'?`<div class="r ok">Офис автошколы${p.note?' · '+esc(p.note.split('\n').slice(1).join(' ')):''}</div>`:p.type==='mo'?`<div class="r ok">Мотоплощадка · ${p.sub==='moto_indoor'?'в помещении':'на улице'}</div>`:
+    `<div class="r ok">Инструктор встречает у станции${p.kpp.length?' · '+p.kpp.map(k=>k==='mt'?'МКПП':'АКПП').join(', '):''}</div>`)+
     (ads.length?`<div class="r">Площадки рядом: ${ads.slice(0,2).map(a=>esc(a.p.n)+', '+a.t+' мин').join('; ')}</div>`:'')+
     `<div class="more"><button type="button" data-open="${id}">Подробнее</button></div>`;
   box.querySelector('[data-open]').onclick=()=>select(id,false);
@@ -554,7 +603,8 @@ function pickAt(e){
   if(tgt.classList.contains('lb')){const id=SC.k[tgt.dataset.k];st=id&&SC.st.find(s=>s.id===id)}
   if(!st){const b=tgt.getBBox();st=nearestStation(b.x+b.width/2,b.y+b.height/2,40)}
   if(!st)return null;
-  const id=MEET.has(st.id)?st.id:nearestMeet(st.x,st.y,SEEK_R);
+  const svc=[...MEET].find(i=>BY_ID[i]&&BY_ID[i].sid===st.id);
+  const id=MEET.has(st.id)?st.id:svc||nearestMeet(st.x,st.y,SEEK_R);
   return id?{id,st}:null;
 }
 let leaveT;
@@ -574,8 +624,8 @@ function bindScheme(){
   box.addEventListener('pointerdown',e=>{if(e.target.closest('#sc-card'))return;ptrs.set(e.pointerId,e);box.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};moved=false});
   const up=e=>{if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);box.classList.remove('drag');
     if(!moved&&!ptrs.size){const hit=pickAt(e);
-      if(hit&&hit.st.id===hit.id)select(hit.id,false);
-      else if(hit){sc.pinned=hit.id;setTarget(hit.id,hit.st)}
+      if(hit&&(hit.st.id===hit.id||BY_ID[hit.id]?.sid===hit.st.id))select(hit.id,false);
+      else if(hit){sc.pinned=hit.id;setTarget(hit.id,hit.st,true)}
       else{sc.pinned=null;if(state.sel)select(null);else setTarget(null)}}
     if(!ptrs.size)drag=null};
   box.addEventListener('pointerup',up);box.addEventListener('pointercancel',up);
@@ -599,7 +649,7 @@ function schemeSelect(p,fly){
   const sid=p.type==='st'?p.id:(p.raw.nb.find(n=>SC.pos[n.s]&&MEET.has(n.s))||p.raw.nb.find(n=>SC.pos[n.s])||{}).s;
   if(!sid||!SC.pos[sid])return;
   const id=MEET.has(sid)?sid:nearestMeet(...SC.pos[sid],SEEK_R);
-  sc.pinned=id||null;if(id)setTarget(id,SC.st.find(s=>s.id===sid));
+  sc.pinned=id||null;if(id)setTarget(id,SC.st.find(s=>s.id===sid),true);
   if(fly){const[x,y]=SC.pos[sid],r=$('#scheme').getBoundingClientRect(),w=Math.min(sc.vb[2],1100),h=w*r.height/r.width;sc.tvb=[x-w/2,y-h/2,w,h];kick()}
 }
 function focusStation(sid){ /* list hover -> spotlight */
@@ -621,7 +671,7 @@ function setView(v){
 $('#v-scheme').onclick=()=>setView('scheme');$('#v-map').onclick=()=>setView('map');
 
 /* ---------- controls ---------- */
-const nst=PLACES.filter(p=>p.type==='st').length,nad=PLACES.length-nst;
+const nst=PLACES.filter(p=>p.type==='st').length,nad=PLACES.filter(p=>p.type==='ad').length;
 $('#n-st').textContent=nst;$('#n-ad').textContent=nad;
 $('#stats').innerHTML=`<div class="stat"><b>${PLACES.length}</b><span>мест встречи</span></div><div class="stat"><b>${nst}</b><span>у метро и МЦД</span></div><div class="stat"><b>${nad}</b><span>по адресу</span></div>`;
 $('#foot').textContent=`Данные обновлены ${D.date}. Карта © OpenStreetMap, OpenFreeMap.`;
