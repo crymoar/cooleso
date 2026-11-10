@@ -127,7 +127,7 @@ button{cursor:pointer}
 #hl{opacity:0;pointer-events:none;transition:opacity .55s cubic-bezier(.4,0,.2,1)}
 .hl #objects,.hl #labels,.hl #marks{opacity:.16}
 .hl #hl{opacity:1}
-#marks .mk,#hl .mk{filter:drop-shadow(0 1px 1.2px rgba(0,0,0,.35))}
+
 #scheme .lb.meet text{font-weight:700}
 .glow{fill:var(--brand);opacity:.45;transition:opacity .3s}
 .glow.on{opacity:.95}
@@ -158,7 +158,7 @@ button{cursor:pointer}
 .lp{width:12px;height:12px;display:inline-block;background:var(--c);border-radius:50% 50% 50% 0;transform:rotate(-45deg);margin:0 2px 3px}
 .ld{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:0 0 0 2px #fff,0 1px 2px rgba(0,0,0,.3)}
 .pl{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;font-style:normal;font-size:10.5px;font-weight:800}
-.lr{width:14px;height:14px;border-radius:50%;border:3.5px solid var(--c);display:inline-block}.lr2{border-color:#e7a329 #228cda #228cda #e7a329;transform:rotate(45deg)}
+.lr{width:14px;height:14px;border-radius:50%;border:3.5px solid var(--c);display:inline-block}.lr2{border-color:#f0a202 #2b7de9 #2b7de9 #f0a202;transform:rotate(45deg)}
 .legend{flex-wrap:wrap;max-width:calc(100% - 90px)}
 .is-map .lg-sc{display:none}.is-scheme .lg-mp{display:none}
 .legend{position:absolute;left:14px;bottom:14px;z-index:3;display:flex;gap:14px;align-items:center;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.95);box-shadow:var(--shadow);font-size:12.5px;font-weight:700;color:var(--ink-2)}
@@ -231,7 +231,7 @@ button{cursor:pointer}
     <div class="views" role="tablist" aria-label="Вид"><button role="tab" id="v-scheme" aria-selected="true">Схема метро</button><button role="tab" id="v-map" aria-selected="false">Карта города</button></div>
     <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="true">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
-    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lp" style="--c:#f0a202"></i>механика</span><span class="lg-sc"><i class="lp" style="--c:#2b7de9"></i>автомат</span><span class="lg-sc"><i class="lp" style="--c:linear-gradient(90deg,#f0a202 50%,#2b7de9 50%)"></i>обе</span><span class="lg-sc"><i class="lp" style="--c:#5b6066"></i>КПП уточняется</span><span class="lg-sc"><i class="lp" style="--c:#151717"></i>офис</span><span class="lg-sc"><i class="lp" style="--c:#11908e"></i>мото</span></div>
+    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lr" style="--c:#f0a202"></i>механика</span><span class="lg-sc"><i class="lr" style="--c:#2b7de9"></i>автомат</span><span class="lg-sc"><i class="lr lr2" style="--c:#2b7de9"></i>обе</span><span class="lg-sc"><i class="lr" style="--c:#5b6066"></i>КПП уточняется</span><span class="lg-sc"><i class="lr" style="--c:#151717;border-radius:3px"></i>офис</span><span class="lg-sc"><i class="lr" style="--c:#11908e"></i>мото</span></div>
     <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
   </section>
 </div>
@@ -491,7 +491,7 @@ async function loadScheme(){
     const id=best?best.id:null;const key='Y|'+i;g.classList.add('lb');g.dataset.k=key;SC.k[key]=id;
     return{el:g,id,ids:id?[id]:[]};
   }).filter(Boolean);
-  sc.gMarks=el('g',{id:'marks'},svg);
+  sc.gMarks=el('g',{id:'marks'});svg.querySelector('#labels').before(sc.gMarks);
   sc.gHl=el('g',{id:'hl'},svg);
   sc.gPins=el('g',{id:'pins'},svg);
   const gh=el('g',{id:'hits'},svg);
@@ -534,12 +534,16 @@ function ensurePinDefs(){
   const d=el('defs',{},sc.svg);const g=el('linearGradient',{id:'pin-both',x1:0,x2:1,y1:0,y2:0},d);
   el('stop',{offset:'.5','stop-color':MC.mt},g);el('stop',{offset:'.5','stop-color':MC.at},g);
 }
+/* one station mark, in scheme units: white node with a thick ring in the gearbox colour */
 function dotMarker(sv,parent){
-  const g=el('g',{class:'pinm'},parent);
-  const fill=sv==='both'?'url(#pin-both)':MC[sv]||MC.none;
-  el('path',{d:PIN_D,fill,stroke:'#fff','stroke-width':1.6,'stroke-linejoin':'round'},g);
-  if(sv==='office'){el('circle',{cy:-15.6,r:4.6,fill:'none',stroke:'#f5ce00','stroke-width':2},g)}
-  else el('circle',{cy:-15.6,r:3.2,fill:'#fff'},g);
+  const g=el('g',{class:'node'},parent),R=7.5,W=3.6;
+  if(sv==='both'){
+    el('circle',{r:R,fill:'#fff'},g);
+    el('path',{d:`M0 ${-R}A${R} ${R} 0 0 0 0 ${R}`,fill:'none',stroke:MC.mt,'stroke-width':W},g);
+    el('path',{d:`M0 ${-R}A${R} ${R} 0 0 1 0 ${R}`,fill:'none',stroke:MC.at,'stroke-width':W},g);
+  }else if(sv==='office'){
+    el('rect',{x:-R,y:-R,width:2*R,height:2*R,rx:3,fill:'#fff',stroke:MC.office,'stroke-width':W},g);
+  }else el('circle',{r:R,fill:'#fff',stroke:MC[sv]||MC.none,'stroke-width':W},g);
   return g;
 }
 function renderMarks(){
@@ -551,8 +555,8 @@ function renderMarks(){
     const main=kinds.includes('both')||(kinds.includes('mt')&&kinds.includes('at'))?'both':kinds.find(v=>v==='mt'||v==='at')||kinds.find(v=>v==='none')||kinds[0];
     const st=SC.st.find(s=>s.x===x&&s.y===y)||SC.st.find(s=>s.id===(ps[0].sid||ps[0].id));
     const g=el('g',{class:'mk','data-x':x,'data-y':y,'data-c':(st?st.c:[]).join(' ')},sc.gMarks);dotMarker(main,g);
-    if(kinds.includes('office')&&main!=='office'){const o=dotMarker('office',g);o.setAttribute('transform','translate(12 -6) scale(.75)')}
-    if(kinds.includes('moto')&&main!=='moto'){const o=dotMarker('moto',g);o.setAttribute('transform','translate(-12 -6) scale(.75)')}
+    if(kinds.includes('office')&&main!=='office'){const o=dotMarker('office',g);o.setAttribute('transform','translate(11 -11) scale(.6)')}
+    if(kinds.includes('moto')&&main!=='moto'){const o=dotMarker('moto',g);o.setAttribute('transform','translate(-11 -11) scale(.6)')}
   }
   for(const id of MEET){const[x,y]=SC.pos[id];const g=el('g',{class:'pin hide','data-x':x,'data-y':y},sc.gPins);g.innerHTML=PIN;sc.pins[id]=g;}
   sc.labels.forEach(l=>l.el.classList.toggle('meet',l.ids.some(i=>MEET.has(i))));
@@ -560,8 +564,9 @@ function renderMarks(){
 }
 function layoutPins(){
   if(!sc.ready)return;
-  const s=1/sc.k;
-  for(const m of [...sc.gMarks.children,...sc.gHl.querySelectorAll('.mk')])m.setAttribute('transform',`translate(${m.dataset.x} ${m.dataset.y}) scale(${s})`);const k=sc.k,near=k>=1.6;
+  /* scheme-sized when zoomed in, never smaller than ~5px on screen when zoomed out */
+  const s=Math.max(1,5/(7.5*sc.k));
+  for(const m of [...sc.gMarks.children,...sc.gHl.querySelectorAll('.mk')])m.setAttribute('transform',`translate(${m.dataset.x} ${m.dataset.y}) scale(${s.toFixed(3)})`);const k=sc.k,near=k>=1.6;
   for(const[id,g]of Object.entries(sc.pins)){
     g.classList.add('hide');
     g.setAttribute('transform',`translate(${g.dataset.x} ${g.dataset.y-8/k}) scale(${1/k})`);
