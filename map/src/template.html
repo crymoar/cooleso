@@ -54,6 +54,14 @@ button{cursor:pointer}
 .seg button{flex:1;height:36px;border:0;border-radius:9px;background:none;font-weight:700;font-size:14px;color:var(--ink-2);white-space:nowrap;transition:background .15s}
 .seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .seg button .n{font-weight:600;color:var(--muted);margin-left:4px;font-size:12px}
+.flabel{font-size:11.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 6px}
+.controls .seg{margin-top:0}
+.seg button:disabled{opacity:.35;cursor:default}
+.seg-s button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.seg-s .ld{width:9px;height:9px;box-shadow:none}
+.check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13.5px;font-weight:600;color:var(--ink-2);cursor:pointer}
+.check input{width:16px;height:16px;margin:0;accent-color:#151717}
+.fnote{margin-top:10px;padding:8px 10px;border-radius:9px;background:var(--bg);font-size:12.5px;line-height:1.35;color:var(--muted);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .chip{height:32px;padding:0 12px;border:1.5px solid var(--line);border-radius:999px;background:var(--surface);font-weight:700;font-size:13px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
 .chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -77,7 +85,15 @@ button{cursor:pointer}
 .item span.s{flex-wrap:nowrap;min-width:0}
 .item .s .ln{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
 .item .s .ln>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.item .s .chips{display:inline-flex;gap:4px;flex:none}
+.item .s .flabel{font-size:11.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 6px}
+.controls .seg{margin-top:0}
+.seg button:disabled{opacity:.35;cursor:default}
+.seg-s button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.seg-s .ld{width:9px;height:9px;box-shadow:none}
+.check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13.5px;font-weight:600;color:var(--ink-2);cursor:pointer}
+.check input{width:16px;height:16px;margin:0;accent-color:#151717}
+.fnote{margin-top:10px;padding:8px 10px;border-radius:9px;background:var(--bg);font-size:12.5px;line-height:1.35;color:var(--muted);font-weight:600}
+.chips{display:inline-flex;gap:4px;flex:none}
 .item>span:last-child{min-width:0}
 .kp.none{font-weight:700}
 .item .t{font-weight:700;font-size:15px;line-height:1.3}
@@ -211,7 +227,7 @@ button{cursor:pointer}
         <svg viewBox="0 0 64 64" aria-hidden="true" id="logo"></svg>
         <h1>Где проходят занятия<small>Автошкола «Колесо» · Москва и область</small></h1>
       </div>
-      <div class="stats" id="stats"></div>
+      <div id="stats" hidden></div>
     </div>
     <div class="controls">
       <div class="search" id="searchbox">
@@ -219,17 +235,21 @@ button{cursor:pointer}
         <input id="q" type="search" placeholder="Станция, улица или линия" autocomplete="off" aria-label="Поиск по станции, адресу или линии">
         <button class="clear" id="clear" aria-label="Очистить поиск">✕</button>
       </div>
-      <div class="seg" role="group" aria-label="Тип места">
-        <button data-type="all" aria-pressed="true">Все</button>
-        <button data-type="st" aria-pressed="false">У метро<span class="n" id="n-st"></span></button>
-        <button data-type="ad" aria-pressed="false">По адресу<span class="n" id="n-ad"></span></button>
-        <button data-type="svc" aria-pressed="false">Офисы, мото</button>
+      <div class="flabel">Где встреча</div>
+      <div class="seg" role="group" aria-label="Где встреча">
+        <button data-type="all" aria-pressed="true">Все<span class="n" id="n-all"></span></button>
+        <button data-type="st" aria-pressed="false">Метро<span class="n" id="n-st"></span></button>
+        <button data-type="ad" aria-pressed="false">Адрес<span class="n" id="n-ad"></span></button>
+        <button data-type="svc" aria-pressed="false">Офис, мото<span class="n" id="n-svc"></span></button>
       </div>
-      <div class="chips" role="group" aria-label="Фильтры">
-        <button class="chip" data-kpp="mt" aria-pressed="false"><span class="tick">✓</span>Механика</button>
-        <button class="chip" data-kpp="at" aria-pressed="false"><span class="tick">✓</span>Автомат</button>
-        <button class="chip" id="mcd" aria-pressed="true"><span class="tick">✓</span>МЦД и МЦК</button>
+      <div class="flabel">Коробка</div>
+      <div class="seg seg-s" role="group" aria-label="Коробка передач">
+        <button data-kpp="any" aria-pressed="true">Любая</button>
+        <button data-kpp="mt" aria-pressed="false"><i class="ld" style="background:#f29900"></i>Механика</button>
+        <button data-kpp="at" aria-pressed="false"><i class="ld" style="background:#1f6fe5"></i>Автомат</button>
       </div>
+      <label class="check"><input type="checkbox" id="mcd" checked> Показывать станции МЦД и МЦК</label>
+      <div class="fnote" id="fnote" hidden></div>
     </div>
     <div class="list" id="list" role="list"></div>
     <div class="detail" id="detail" aria-live="polite"></div>
@@ -286,17 +306,26 @@ PLACES.forEach(p=>{
 const BY_ID=Object.fromEntries(PLACES.map(p=>[p.id,p]));
 
 /* ---------- state ---------- */
-const state={q:'',type:'all',kpp:new Set(),mcd:true,sel:null,lines:true};
+const state={q:'',type:'all',kpp:'any',mcd:true,sel:null,lines:true};
 
-function visible(){
+/* filters: where (type), gearbox ('mt' also matches stations with both), МЦД/МЦК, search */
+function matches(p,skip){
   const q=fold(state.q.trim());
-  return PLACES.filter(p=>{
-    if(state.type!=='all'&&(state.type==='svc'?!(p.type==='of'||p.type==='mo'):p.type!==state.type))return false;
-    if(!state.mcd&&p.type==='st'&&p.kind!=='Метро')return false;
-    if(state.kpp.size&&(p.type!=='st'||![...state.kpp].every(k=>p.kpp.includes(k))))return false;
-    if(q&&!p.search.includes(q))return false;
-    return true;
-  }).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+  if(skip!=='type'&&state.type!=='all'&&(state.type==='svc'?!(p.type==='of'||p.type==='mo'):p.type!==state.type))return false;
+  if(!state.mcd&&p.type==='st'&&p.kind!=='Метро')return false;
+  if(state.kpp!=='any'&&!(p.type==='st'&&p.kpp.includes(state.kpp)))return false;
+  if(q&&!p.search.includes(q))return false;
+  return true;
+}
+function visible(){return PLACES.filter(p=>matches(p)).sort((a,b)=>a.name.localeCompare(b.name,'ru'))}
+function updateCounts(){
+  const base=PLACES.filter(p=>matches(p,'type'));
+  const n={all:base.length,st:base.filter(p=>p.type==='st').length,ad:base.filter(p=>p.type==='ad').length,svc:base.filter(p=>p.type==='of'||p.type==='mo').length};
+  for(const k in n)$('#n-'+k).textContent=n[k];
+  $$('.seg [data-type]').forEach(b=>b.disabled=b.dataset.type!=='all'&&!n[b.dataset.type]);
+  const note=$('#fnote');
+  if(state.kpp!=='any'){note.hidden=false;note.textContent='Коробка указана только для станций метро, поэтому адреса, офисы и станции без данных о коробке скрыты.'}
+  else note.hidden=true;
 }
 
 /* ---------- list ---------- */
@@ -321,11 +350,12 @@ function sub(p){
   return s;
 }
 function renderList(){
+  updateCounts();
   const v=visible();
   const nst=v.filter(p=>p.type==='st').length,nad=v.length-nst;
   $('#list').innerHTML=v.length
     ?`<div class="count">${plural(v.length,'место','места','мест')}${state.q?' по запросу':''}</div>`+v.map(p=>`<button class="item${state.sel===p.id?' active':''}" role="listitem" data-id="${p.id}">${icon(p)}<span><span class="t">${esc(p.name)}</span><span class="s">${sub(p)}</span></span></button>`).join('')
-    :`<div class="empty"><b>Ничего не нашли</b>Попробуйте название станции или улицы${state.kpp.size?', или снимите фильтр по коробке — для адресов он не указан':''}.</div>`;
+    :`<div class="empty"><b>Ничего не нашли</b>Попробуйте название станции или улицы${state.kpp!=='any'?', или снимите фильтр по коробке — для адресов он не указан':''}.</div>`;
   $$('#list .item').forEach(b=>{
     b.onclick=()=>select(b.dataset.id,true);
     b.onmouseenter=()=>hover(b.dataset.id);b.onmouseleave=()=>hover(null);
@@ -736,14 +766,14 @@ $('#v-scheme').onclick=()=>setView('scheme');$('#v-map').onclick=()=>setView('ma
 
 /* ---------- controls ---------- */
 const nst=PLACES.filter(p=>p.type==='st').length,nad=PLACES.filter(p=>p.type==='ad').length;
-$('#n-st').textContent=nst;$('#n-ad').textContent=nad;
+
 $('#stats').innerHTML=`<div class="stat"><b>${PLACES.length}</b><span>мест встречи</span></div><div class="stat"><b>${nst}</b><span>у метро и МЦД</span></div><div class="stat"><b>${nad}</b><span>по адресу</span></div>`;
 $('#foot').textContent=`Данные обновлены ${D.date}. Карта © OpenStreetMap, OpenFreeMap.`;
 let t;$('#q').oninput=e=>{state.q=e.target.value;$('#searchbox').classList.toggle('has-value',!!state.q);clearTimeout(t);t=setTimeout(()=>{if(state.sel)select(null);renderList()},120)};
 $('#clear').onclick=()=>{$('#q').value='';$('#q').dispatchEvent(new Event('input'));$('#q').focus()};
-$$('.seg button').forEach(b=>b.onclick=()=>{state.type=b.dataset.type;$$('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b));select(null);renderList()});
-$$('[data-kpp]').forEach(b=>b.onclick=()=>{const k=b.dataset.kpp;state.kpp.has(k)?state.kpp.delete(k):state.kpp.add(k);b.setAttribute('aria-pressed',state.kpp.has(k));select(null);renderList()});
-$('#mcd').onclick=e=>{state.mcd=!state.mcd;e.currentTarget.setAttribute('aria-pressed',state.mcd);select(null);renderList()};
+$$('.seg [data-type]').forEach(b=>b.onclick=()=>{state.type=b.dataset.type;$$('.seg [data-type]').forEach(x=>x.setAttribute('aria-pressed',x===b));select(null);renderList()});
+$$('[data-kpp]').forEach(b=>b.onclick=()=>{state.kpp=b.dataset.kpp;$$('[data-kpp]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(state.kpp!=='any'&&(state.type==='ad'||state.type==='svc')){state.type='all';$$('.seg [data-type]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.type==='all'))}select(null);renderList()});
+$('#mcd').onchange=e=>{state.mcd=e.target.checked;select(null);renderList()};
 $('#toggle-lines').onclick=e=>{state.lines=!state.lines;e.currentTarget.setAttribute('aria-pressed',state.lines);if(ready)for(const l of['lines-casing','lines-metro','lines-rail','allst','allst-label'])map.setLayoutProperty(l,'visibility',state.lines?'visible':'none')};
 addEventListener('keydown',e=>{if(e.key==='Escape'&&state.sel)select(null)});
 
