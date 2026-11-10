@@ -127,8 +127,8 @@ button{cursor:pointer}
 .glow.on{opacity:.95}
 
 .hit{fill:transparent;cursor:pointer}
-#veil{fill:#fff;opacity:0;transition:opacity .35s ease;pointer-events:none}
-#veil.on{opacity:.72}
+#veil{fill:#fff;opacity:0;transition:opacity .15s ease;pointer-events:none}
+#veil.on{opacity:.78}
 .pin{pointer-events:none;transition:opacity .25s}
 .pin.hide{opacity:0}
 .sc-card{position:absolute;z-index:6;width:min(280px,calc(100% - 24px));padding:12px 14px 13px;border-radius:14px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
@@ -215,7 +215,7 @@ button{cursor:pointer}
     <div class="views" role="tablist" aria-label="Вид"><button role="tab" id="v-scheme" aria-selected="true">Схема метро</button><button role="tab" id="v-map" aria-selected="false">Карта города</button></div>
     <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="true">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
-    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lg-cl" style="opacity:.75"></i>Здесь встречает инструктор</span><span class="lg-sc" style="color:var(--muted)">Наведите на станцию — покажем ближайшее место занятий</span></div>
+    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><b style="font-weight:800">Жирным</b> — здесь встречает инструктор</span><span class="lg-sc" style="color:var(--muted)">Наведите на станцию — покажем ближайшее место занятий</span></div>
     <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
   </section>
 </div>
@@ -455,22 +455,16 @@ async function loadScheme(){
   /* Yandex label groups: tie each to the station it names (same name, nearest on the scheme) */
   sc.labels=[...svg.querySelectorAll('#labels .scheme-objects-view__label')].map((g,i)=>{
     const tx=g.querySelector('text');if(!tx)return null;
-    const name=fold2([...g.querySelectorAll('text')].map(t=>t.textContent).join(' '));
+    const tt=[...g.querySelectorAll('text')];const name=fold2(tt[tt.length-1].textContent);
     const bb=tx.getBBox();let best=null,bd=1e9;
     for(const s of SC.st){if(fold2(s.n)!==name)continue;const d=Math.hypot(s.x-(bb.x+bb.width/2),s.y-(bb.y+bb.height/2));if(d<bd){bd=d;best=s}}
     const id=best?best.id:null;const key='Y|'+i;g.classList.add('lb');g.dataset.k=key;SC.k[key]=id;
     return{el:g,id,ids:id?[id]:[]};
   }).filter(Boolean);
-  const md=el('defs',{},svg);
-  const rg=el('radialGradient',{id:'spotg'},md);
-  el('stop',{offset:'0','stop-color':'#000'},rg);el('stop',{offset:'.6','stop-color':'#000'},rg);el('stop',{offset:'1','stop-color':'#fff'},rg);
-  const mask=el('mask',{id:'spotm',maskUnits:'userSpaceOnUse',x:-6000,y:-6000,width:18000,height:18000},md);
-  el('rect',{x:-6000,y:-6000,width:18000,height:18000,fill:'#fff'},mask);
-  sc.hole=el('circle',{cx:-999,cy:-999,r:0,fill:'url(#spotg)'},mask);
-  el('rect',{id:'veil',x:-6000,y:-6000,width:18000,height:18000,mask:'url(#spotm)'},svg);
+  sc.veil=el('path',{id:'veil','fill-rule':'evenodd',d:''},svg);
   sc.gPins=el('g',{id:'pins'},svg);
   sc.svg=svg;sc.gGlow=gGlow;
-  sc.ready=true;bindScheme();renderMarks();startView();tick();
+  sc.ready=true;bindScheme();renderMarks();startView();
   if(state.sel)schemeSelect(BY_ID[state.sel],true);
 }
 function startView(){const r=$('#scheme').getBoundingClientRect(),w=Math.min(1500,W0),h=w*r.height/r.width;sc.vb=[1520-w/2,1560-h/2,w,h];applyVB()}
@@ -481,7 +475,6 @@ function renderMarks(){
   if(!sc.ready)return;MEET=meetIds();
   sc.gGlow.replaceChildren();sc.gPins.replaceChildren();sc.glows={};sc.pins={};
   for(const id of MEET){const[x,y]=SC.pos[id];
-    sc.glows[id]=el('circle',{class:'glow',cx:x,cy:y,r:GLOW_R},sc.gGlow);
     const g=el('g',{class:'pin hide','data-x':x,'data-y':y},sc.gPins);g.innerHTML=PIN;sc.pins[id]=g;}
   sc.labels.forEach(l=>l.el.classList.toggle('meet',l.ids.some(i=>MEET.has(i))));
   if(sc.target&&!MEET.has(sc.target))setTarget(null);
@@ -507,28 +500,25 @@ function stopsBetween(from,toId){ /* stops along the same line, if any */
 /* spotlight target */
 function setTarget(id,fromStation){
   sc.target=id;sc.from=fromStation||null;
-  $('#veil').classList.toggle('on',!!id);
-  Object.entries(sc.glows).forEach(([k,g])=>g.classList.toggle('on',k===id));
-  if(id){const[x,y]=SC.pos[id];sc.spot.tx=x;sc.spot.ty=y;sc.spot.tr=SPOT_R;if(!sc.spot.r){sc.spot.x=x;sc.spot.y=y}}
-  else sc.spot.tr=0;
+  if(id){const[x,y]=SC.pos[id],R=SPOT_R;
+    sc.veil.setAttribute('d',`M-6000-6000H9000V9000H-6000Z M${x-R} ${y}a${R} ${R} 0 1 0 ${2*R} 0a${R} ${R} 0 1 0 ${-2*R} 0Z`)}
+  sc.veil.classList.toggle('on',!!id);
   renderCard();layoutPins();hoverList(id);
 }
 
-/* animation loop: spotlight glides, view box eases */
-function tick(){
-  const s=sc.spot,e=.2;
-  s.x+=(s.tx-s.x)*e;s.y+=(s.ty-s.y)*e;s.r+=(s.tr-s.r)*e;
-  if(s.r<1&&!s.tr)s.r=0;
-  sc.hole.setAttribute('cx',s.x.toFixed(1));sc.hole.setAttribute('cy',s.y.toFixed(1));sc.hole.setAttribute('r',(s.r+0.01).toFixed(1));
-  if(sc.tvb){const v=sc.vb,t=sc.tvb;let done=true;for(let i=0;i<4;i++){v[i]+=(t[i]-v[i])*.22;if(Math.abs(t[i]-v[i])>.3)done=false}if(done){sc.vb=[...t];sc.tvb=null}applyVB()}
-  placeCard();
-  requestAnimationFrame(tick);
+/* view box easing runs only while zooming */
+function kick(){if(!sc.raf)sc.raf=requestAnimationFrame(step)}
+function step(){
+  sc.raf=0;if(!sc.tvb)return;
+  const v=sc.vb,t=sc.tvb;let done=true;for(let i=0;i<4;i++){v[i]+=(t[i]-v[i])*.25;if(Math.abs(t[i]-v[i])>.3)done=false}
+  if(done){sc.vb=[...t];sc.tvb=null}applyVB();if(!done)kick();
 }
 function applyVB(){
   if(!sc.svg)return;
   sc.svg.setAttribute('viewBox',sc.vb.map(v=>v.toFixed(2)).join(' '));
   const k=$('#scheme').clientWidth/sc.vb[2];
   if(Math.abs(k-sc.k)>.0005){sc.k=k;layoutPins()}
+  placeCard();
 }
 
 /* callout card anchored to the target station */
@@ -558,10 +548,11 @@ function placeCard(){
 /* pointer: hover picks the nearest station, the spotlight goes to the nearest place with lessons */
 function toScheme(e){const m=sc.svg.getScreenCTM().inverse();return[m.a*e.clientX+m.c*e.clientY+m.e,m.b*e.clientX+m.d*e.clientY+m.f]}
 function pickAt(e){
-  const lab=e.target.closest&&e.target.closest('.lb');
+  const tgt=e.target.closest&&e.target.closest('.lb,.scheme-objects-view__station');
+  if(!tgt)return null;
   let st=null;
-  if(lab){const id=SC.k[lab.dataset.k];st=SC.st.find(s=>s.id===id)||SC.st.find(s=>fold2(s.n)===fold2(lab.dataset.k.split('|')[1]))}
-  const[x,y]=toScheme(e);st=st||nearestStation(x,y,PICK_R/Math.max(sc.k,.6));
+  if(tgt.classList.contains('lb')){const id=SC.k[tgt.dataset.k];st=id&&SC.st.find(s=>s.id===id)}
+  if(!st){const b=tgt.getBBox();st=nearestStation(b.x+b.width/2,b.y+b.height/2,40)}
   if(!st)return null;
   const id=MEET.has(st.id)?st.id:nearestMeet(st.x,st.y,SEEK_R);
   return id?{id,st}:null;
@@ -578,7 +569,7 @@ function bindScheme(){
     if(e.pointerType!=='mouse'||sc.pinned||e.target.closest('#sc-card'))return;
     const hit=pickAt(e);
     if(hit){clearTimeout(leaveT);if(hit.id!==sc.target||hit.st!==sc.from)setTarget(hit.id,hit.st)}
-    else if(sc.target){clearTimeout(leaveT);leaveT=setTimeout(()=>{if(!sc.pinned)setTarget(null)},260)}
+    else if(sc.target){clearTimeout(leaveT);leaveT=setTimeout(()=>{if(!sc.pinned)setTarget(null)},120)}
   });
   box.addEventListener('pointerdown',e=>{if(e.target.closest('#sc-card'))return;ptrs.set(e.pointerId,e);box.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};moved=false});
   const up=e=>{if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);box.classList.remove('drag');
@@ -597,11 +588,11 @@ function zoomAt(f,cx,cy,anim){
   const nw=Math.min(Math.max(w*f,320),W0*1.3),k=nw/w;
   const px=x+(cx-r.left)/r.width*w,py=y+(cy-r.top)/r.height*h;
   const to=[px-(px-x)*k,py-(py-y)*k,nw,h*k];
-  if(anim)sc.tvb=to;else{sc.tvb=null;sc.vb=to;applyVB()}
+  if(anim){sc.tvb=to;kick()}else{sc.tvb=null;sc.vb=to;applyVB()}
 }
 function fitScheme(anim){const r=$('#scheme').getBoundingClientRect(),a=r.width/r.height;
   let w=W0,h=H0;if(w/h<a)w=h*a;else h=w/a;const to=[VB0[0]+(W0-w)/2,VB0[1]+(H0-h)/2,w,h];
-  if(anim)sc.tvb=to;else{sc.vb=to;applyVB()}}
+  if(anim){sc.tvb=to;kick()}else{sc.vb=to;applyVB()}}
 function schemeSelect(p,fly){
   if(!sc.ready)return;
   if(!p){sc.pinned=null;setTarget(null);return}
@@ -609,7 +600,7 @@ function schemeSelect(p,fly){
   if(!sid||!SC.pos[sid])return;
   const id=MEET.has(sid)?sid:nearestMeet(...SC.pos[sid],SEEK_R);
   sc.pinned=id||null;if(id)setTarget(id,SC.st.find(s=>s.id===sid));
-  if(fly){const[x,y]=SC.pos[sid],r=$('#scheme').getBoundingClientRect(),w=Math.min(sc.vb[2],1100),h=w*r.height/r.width;sc.tvb=[x-w/2,y-h/2,w,h]}
+  if(fly){const[x,y]=SC.pos[sid],r=$('#scheme').getBoundingClientRect(),w=Math.min(sc.vb[2],1100),h=w*r.height/r.width;sc.tvb=[x-w/2,y-h/2,w,h];kick()}
 }
 function focusStation(sid){ /* list hover -> spotlight */
   if(!sc.ready||sc.pinned)return;
@@ -624,7 +615,7 @@ function setView(v){
   view=v;$('#app').classList.toggle('is-scheme',v==='scheme');$('#app').classList.toggle('is-map',v==='map');
   $('#v-scheme').setAttribute('aria-selected',v==='scheme');$('#v-map').setAttribute('aria-selected',v==='map');
   $('#scheme').hidden=v!=='scheme';$('#sc-zoom').hidden=v!=='scheme';$('#map').style.visibility=v==='map'?'visible':'hidden';
-  if(v==='scheme'){loadScheme();requestAnimationFrame(()=>{applyVB();placeCard()})}
+  if(v==='scheme'){loadScheme();requestAnimationFrame(()=>applyVB())}
   if(v==='map'){if(!map&&window.maplibregl)initMap();else if(map){map.resize();highlight(state.sel&&BY_ID[state.sel],true)}}
 }
 $('#v-scheme').onclick=()=>setView('scheme');$('#v-map').onclick=()=>setView('map');
