@@ -123,11 +123,11 @@ button{cursor:pointer}
 #scheme svg text{font-family:"YS Text",Inter,Arial,Helvetica,sans-serif}
 #scheme .lb{cursor:pointer}
 #hits .hit{fill:transparent;cursor:pointer}
-#objects > *, #objects > g > *, #labels .lb, #marks{transition:opacity .35s ease}
-.hl #objects .scheme-objects-view__decorations ~ * :not(.on){}
-.hl #objects line:not(.on), .hl #objects path:not(.on), .hl #objects g.scheme-objects-view__station:not(.on), .hl #objects .scheme-objects-view__transfers > :not(.on), .hl #objects > g > g:not(.on){opacity:.12}
-.hl #labels .lb:not(.on){opacity:.18}
-.hl #marks{opacity:.35}
+#objects,#labels,#marks{transition:opacity .55s cubic-bezier(.4,0,.2,1)}
+#hl{opacity:0;pointer-events:none;transition:opacity .55s cubic-bezier(.4,0,.2,1)}
+.hl #objects,.hl #labels,.hl #marks{opacity:.16}
+.hl #hl{opacity:1}
+#marks .mk,#hl .mk{filter:drop-shadow(0 1px 1.2px rgba(0,0,0,.35))}
 #scheme .lb.meet text{font-weight:700}
 .glow{fill:var(--brand);opacity:.45;transition:opacity .3s}
 .glow.on{opacity:.95}
@@ -141,7 +141,7 @@ button{cursor:pointer}
 .kp::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
 .kp.mt{background:#fdf0d6;color:#9a5d00}.kp.at{background:#dcecfa;color:#1a6fb0}.kp.none{background:#eeefec;color:#62676c}
 .sc-card .kpp{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.sc-card .kp{height:26px;font-size:13px}
-.sc-card{position:absolute;z-index:6;width:min(280px,calc(100% - 24px));padding:12px 14px 13px;border-radius:14px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
+.sc-card{position:absolute;z-index:6;transition:opacity .3s ease .1s,transform .3s ease .1s!important;width:min(280px,calc(100% - 24px));padding:12px 14px 13px;border-radius:14px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
 .sc-card.on{opacity:1;transform:none;pointer-events:auto}
 .sc-card .from{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}
 .sc-card b{display:block;font-size:16px;font-weight:800;line-height:1.2}
@@ -155,6 +155,9 @@ button{cursor:pointer}
 .sc-zoom{position:absolute;right:14px;bottom:14px;z-index:5;display:flex;flex-direction:column;border-radius:12px;background:#fff;box-shadow:var(--shadow);overflow:hidden}
 .sc-zoom button{width:40px;height:40px;border:0;background:none;font-size:20px;font-weight:600}
 .sc-zoom button+button{border-top:1px solid var(--line)}
+.lp{width:12px;height:12px;display:inline-block;background:var(--c);border-radius:50% 50% 50% 0;transform:rotate(-45deg);margin:0 2px 3px}
+.ld{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:0 0 0 2px #fff,0 1px 2px rgba(0,0,0,.3)}
+.pl{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;font-style:normal;font-size:10.5px;font-weight:800}
 .lr{width:14px;height:14px;border-radius:50%;border:3.5px solid var(--c);display:inline-block}.lr2{border-color:#e7a329 #228cda #228cda #e7a329;transform:rotate(45deg)}
 .legend{flex-wrap:wrap;max-width:calc(100% - 90px)}
 .is-map .lg-sc{display:none}.is-scheme .lg-mp{display:none}
@@ -228,13 +231,14 @@ button{cursor:pointer}
     <div class="views" role="tablist" aria-label="Вид"><button role="tab" id="v-scheme" aria-selected="true">Схема метро</button><button role="tab" id="v-map" aria-selected="false">Карта города</button></div>
     <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="true">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
-    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lr" style="--c:#e7a329"></i>МКПП</span><span class="lg-sc"><i class="lr" style="--c:#228cda"></i>АКПП</span><span class="lg-sc"><i class="lr lr2" style="--c:#228cda"></i>Обе</span><span class="lg-sc"><i class="lr" style="--c:#4b4f54"></i>Коробка уточняется</span><span class="lg-sc"><i class="lr" style="--c:#247958"></i>Офис</span><span class="lg-sc"><i class="lr" style="--c:#168c91"></i>Мото</span></div>
+    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lp" style="--c:#f0a202"></i>механика</span><span class="lg-sc"><i class="lp" style="--c:#2b7de9"></i>автомат</span><span class="lg-sc"><i class="lp" style="--c:linear-gradient(90deg,#f0a202 50%,#2b7de9 50%)"></i>обе</span><span class="lg-sc"><i class="lp" style="--c:#5b6066"></i>КПП уточняется</span><span class="lg-sc"><i class="lp" style="--c:#151717"></i>офис</span><span class="lg-sc"><i class="lp" style="--c:#11908e"></i>мото</span></div>
     <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
   </section>
 </div>
 
 <script id="data" type="application/json">__DATA__</script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js" defer></script>
 <script>
 addEventListener('DOMContentLoaded',()=>{
 const D=JSON.parse(document.getElementById('data').textContent);
@@ -469,7 +473,8 @@ function meetIds(){return new Set(visible().filter(p=>p.type!=='ad'&&SC.pos[p.id
 let MEET=new Set();
 
 async function loadScheme(){
-  if(sc.ready||sc.loading)return;sc.loading=true;
+  if(sc.ready||sc.loading)return;
+  if(!window.d3){setTimeout(loadScheme,60);return}sc.loading=true;
   const host=$('#scheme');
   let txt;
   try{const r=await fetch(SCHEME_URL);if(!r.ok)throw Error(r.status);txt=await r.text()}
@@ -486,13 +491,17 @@ async function loadScheme(){
     const id=best?best.id:null;const key='Y|'+i;g.classList.add('lb');g.dataset.k=key;SC.k[key]=id;
     return{el:g,id,ids:id?[id]:[]};
   }).filter(Boolean);
-  sc.gMarks=el('g',{id:'marks'});svg.querySelector('#labels').before(sc.gMarks);
+  sc.gMarks=el('g',{id:'marks'},svg);
+  sc.gHl=el('g',{id:'hl'},svg);
   sc.gPins=el('g',{id:'pins'},svg);
   const gh=el('g',{id:'hits'},svg);
   sc.labels.forEach(l=>{if(!l.id)return;const b=l.el.getBBox();
     el('rect',{class:'hit','data-sid':l.id,x:b.x-4,y:b.y-3,width:b.width+8,height:b.height+6},gh)});
   SC.st.forEach(s=>el('circle',{class:'hit','data-sid':s.id,cx:s.x,cy:s.y,r:11},gh));
-  sc.svg=svg;sc.gGlow=gGlow;
+  /* everything goes into one viewport group that d3-zoom transforms */
+  const vp=el('g',{id:'vp'});while(svg.firstChild)vp.appendChild(svg.firstChild);svg.appendChild(vp);
+  svg.setAttribute('viewBox','');svg.setAttribute('width','100%');svg.setAttribute('height','100%');
+  sc.vp=vp;sc.svg=svg;sc.gGlow=gGlow;
   /* index line and station shapes by line colour, for highlighting */
   const objs=svg.querySelector('#objects');
   sc.shapes=[...objs.querySelectorAll(':scope > g > line, :scope > g > path, :scope > g > g, :scope > line, :scope > path, :scope > g.scheme-objects-view__station, :scope > g.scheme-objects-view__transfers > *')]
@@ -502,40 +511,59 @@ async function loadScheme(){
   sc.ready=true;bindScheme();renderMarks();startView();
   if(state.sel)schemeSelect(BY_ID[state.sel],true);
 }
-function startView(){const r=$('#scheme').getBoundingClientRect(),w=Math.min(1500,W0),h=w*r.height/r.width;sc.vb=[1520-w/2,1560-h/2,w,h];applyVB()}
+function startView(){viewTo(1520,1560,Math.min(1500,W0),0)}
 
 /* meeting markers: highlighter glow under the line + bold label; pins appear when zoomed in */
 const PIN=`<path d="M0 0C-3-5-11-10-11-18a11 11 0 1 1 22 0C11-10 3-5 0 0Z" fill="#151717" stroke="#fff" stroke-width="2"/><circle cx="0" cy="-18" r="6.2" fill="none" stroke="#f5ce00" stroke-width="2.4"/><path d="M-1.4-21.2v6.4l4.4-3.2z" fill="#fff"/>`;
-function marker(p,x,y){
-  /* ring around the station, coloured by category; both gearboxes = split ring */
-  const g=el('g',{class:'mk'},sc.gMarks),R=15,sv=svcOf(p);
-  el('circle',{cx:x,cy:y,r:R,fill:'none',stroke:'#fff','stroke-width':9},g);
-  if(sv==='both'){
-    el('path',{d:`M${x} ${y-R}A${R} ${R} 0 0 0 ${x} ${y+R}`,fill:'none',stroke:SVC.mt,'stroke-width':5},g);
-    el('path',{d:`M${x} ${y-R}A${R} ${R} 0 0 1 ${x} ${y+R}`,fill:'none',stroke:SVC.at,'stroke-width':5},g);
-  }else el('circle',{cx:x,cy:y,r:R,fill:'none',stroke:SVC[sv],'stroke-width':sv==='office'||sv==='moto'?6:5},g);
-  if(sv==='office'||sv==='moto'){const b=el('g',{transform:`translate(${x+R*.72} ${y-R*.72})`},g);
-    el('circle',{r:9,fill:SVC[sv],stroke:'#fff','stroke-width':2.5},b);
-    const tx=el('text',{y:4,'text-anchor':'middle','font-size':12,'font-weight':800,fill:'#fff'},b);tx.textContent=sv==='office'?'О':'М';}
+const TAG={mt:['М','#fdf0d6','#9a5d00'],at:['А','#dcecfa','#1a6fb0'],office:['офис','#e2f1e9','#1d6b48'],moto:['мото','#dff1f1','#11706f']};
+function tagsFor(ps){const out=[];const add=k=>{if(!out.includes(k))out.push(k)};
+  ps.forEach(p=>{const sv=svcOf(p);if(sv==='both'){add('mt');add('at')}else if(TAG[sv])add(sv)});return out}
+function pillRow(keys,x,y,alignRight,parent){
+  const g=el('g',{class:'tags'},parent);let cx=0;const parts=[];
+  for(const k of keys){const[txt,bg,fg]=TAG[k];const w=txt.length>1?txt.length*6.4+10:15;
+    const r=el('rect',{x:cx,y:-7.5,width:w,height:15,rx:7.5,fill:bg},g);const tx=el('text',{x:cx+w/2,y:3.6,'text-anchor':'middle','font-size':10,'font-weight':700,fill:fg},g);tx.textContent=txt;
+    cx+=w+3;}
+  const W=cx-3;g.setAttribute('transform',`translate(${alignRight?x-W:x} ${y})`);return g;
+}
+/* station markers keep a constant on-screen size (scaled by 1/zoom) */
+const MC={mt:'#f0a202',at:'#2b7de9',none:'#5b6066',office:'#151717',moto:'#11908e'};
+/* map pin, tip at the station point; drawn in screen pixels */
+const PIN_D='M0 0C-2.2-4.6-9-9.2-9-15.6a9 9 0 1 1 18 0C9-9.2 2.2-4.6 0 0Z';
+function ensurePinDefs(){
+  if(sc.svg.querySelector('#pin-both'))return;
+  const d=el('defs',{},sc.svg);const g=el('linearGradient',{id:'pin-both',x1:0,x2:1,y1:0,y2:0},d);
+  el('stop',{offset:'.5','stop-color':MC.mt},g);el('stop',{offset:'.5','stop-color':MC.at},g);
+}
+function dotMarker(sv,parent){
+  const g=el('g',{class:'pinm'},parent);
+  const fill=sv==='both'?'url(#pin-both)':MC[sv]||MC.none;
+  el('path',{d:PIN_D,fill,stroke:'#fff','stroke-width':1.6,'stroke-linejoin':'round'},g);
+  if(sv==='office'){el('circle',{cy:-15.6,r:4.6,fill:'none',stroke:'#f5ce00','stroke-width':2},g)}
+  else el('circle',{cy:-15.6,r:3.2,fill:'#fff'},g);
   return g;
 }
 function renderMarks(){
-  if(!sc.ready)return;MEET=meetIds();
+  if(!sc.ready)return;MEET=meetIds();ensurePinDefs();
   sc.gMarks.replaceChildren();sc.gPins.replaceChildren();sc.pins={};
-  const seen={};
-  for(const id of MEET){const[x,y]=SC.pos[id];const key=x+','+y;
-    /* several categories at one station: offset rings slightly so both show */
-    const n=seen[key]=(seen[key]||0)+1;
-    marker(BY_ID[id],x+(n-1)*7,y-(n-1)*7);
-    const g=el('g',{class:'pin hide','data-x':x,'data-y':y},sc.gPins);g.innerHTML=PIN;sc.pins[id]=g;}
+  const byPos={};for(const id of MEET){const k=SC.pos[id].join(',');(byPos[k]=byPos[k]||[]).push(BY_ID[id])}
+  for(const[k,ps]of Object.entries(byPos)){const[x,y]=k.split(',').map(Number);
+    const kinds=ps.map(svcOf);
+    const main=kinds.includes('both')||(kinds.includes('mt')&&kinds.includes('at'))?'both':kinds.find(v=>v==='mt'||v==='at')||kinds.find(v=>v==='none')||kinds[0];
+    const st=SC.st.find(s=>s.x===x&&s.y===y)||SC.st.find(s=>s.id===(ps[0].sid||ps[0].id));
+    const g=el('g',{class:'mk','data-x':x,'data-y':y,'data-c':(st?st.c:[]).join(' ')},sc.gMarks);dotMarker(main,g);
+    if(kinds.includes('office')&&main!=='office'){const o=dotMarker('office',g);o.setAttribute('transform','translate(12 -6) scale(.75)')}
+    if(kinds.includes('moto')&&main!=='moto'){const o=dotMarker('moto',g);o.setAttribute('transform','translate(-12 -6) scale(.75)')}
+  }
+  for(const id of MEET){const[x,y]=SC.pos[id];const g=el('g',{class:'pin hide','data-x':x,'data-y':y},sc.gPins);g.innerHTML=PIN;sc.pins[id]=g;}
   sc.labels.forEach(l=>l.el.classList.toggle('meet',l.ids.some(i=>MEET.has(i))));
-  if(sc.target&&!MEET.has(sc.target))setTarget(null);
   layoutPins();
 }
 function layoutPins(){
-  if(!sc.ready)return;const k=sc.k,near=k>=1.6;
+  if(!sc.ready)return;
+  const s=1/sc.k;
+  for(const m of [...sc.gMarks.children,...sc.gHl.querySelectorAll('.mk')])m.setAttribute('transform',`translate(${m.dataset.x} ${m.dataset.y}) scale(${s})`);const k=sc.k,near=k>=1.6;
   for(const[id,g]of Object.entries(sc.pins)){
-    const show=near||id===sc.target;g.classList.toggle('hide',!show);
+    g.classList.add('hide');
     g.setAttribute('transform',`translate(${g.dataset.x} ${g.dataset.y-8/k}) scale(${1/k})`);
   }
 }
@@ -550,15 +578,22 @@ function stopsBetween(from,toId){ /* stops along the same line, if any */
 }
 
 /* spotlight target */
-const HOVER_DELAY=180;
+const HOVER_DELAY=220;
 let hoverT=null, lit=null;
 function cardOff(){$('#sc-card').classList.remove('on')}
+let hlKey='',hlClear=0;
 function lightLines(cols){
-  const svg=sc.svg;
-  if(!cols){svg.classList.remove('hl');return}
-  const has=e=>{for(const c of e._c)if(cols.has(c))return true;return false};
-  sc.shapes.forEach(e=>e.classList.toggle('on',has(e)));
-  sc.lab.forEach(l=>{let on=false;for(const c of l.c)if(cols.has(c)){on=true;break}l.el.classList.toggle('on',on)});
+  const svg=sc.svg;clearTimeout(hlClear);
+  if(!cols||!cols.size){svg.classList.remove('hl');hlKey='';hlClear=setTimeout(()=>{if(!hlKey)sc.gHl.replaceChildren()},600);return}
+  const key=[...cols].sort().join();
+  if(key!==hlKey){
+    hlKey=key;const has=s=>{for(const c of s)if(cols.has(c))return true;return false};
+    const frag=document.createDocumentFragment();
+    sc.shapes.forEach(e=>{if(has(e._c))frag.appendChild(e.cloneNode(true))});
+    sc.lab.forEach(l=>{if(has(l.c))frag.appendChild(l.el.cloneNode(true))});
+    [...sc.gMarks.children].forEach(m=>{if(has((m.dataset.c||'').split(' ').filter(Boolean)))frag.appendChild(m.cloneNode(true))});
+    sc.gHl.replaceChildren(frag);
+  }
   svg.classList.add('hl');
 }
 /* hover a station: after a short delay its line(s) light up, the rest fades */
@@ -577,21 +612,18 @@ function setTarget(id,fromStation,now){
   if(now)go();else hoverT=setTimeout(go,HOVER_DELAY);
 }
 
-/* view box easing runs only while zooming */
-function kick(){if(!sc.raf)sc.raf=requestAnimationFrame(step)}
-function step(){
-  sc.raf=0;if(!sc.tvb)return;
-  const v=sc.vb,t=sc.tvb;let done=true;for(let i=0;i<4;i++){v[i]+=(t[i]-v[i])*.25;if(Math.abs(t[i]-v[i])>.3)done=false}
-  if(done){sc.vb=[...t];sc.tvb=null}applyVB();if(!done)kick();
+/* pan & zoom: d3-zoom, like a map */
+let zoomB=null;
+function applyVB(){if(sc.svg){layoutPins();placeCard()}}
+function onZoom(e){
+  const tr=e.transform;sc.vp.setAttribute('transform',tr.toString());
+  if(Math.abs(tr.k-sc.k)>1e-4){sc.k=tr.k;layoutPins()}placeCard();
 }
-function applyVB(){
-  if(!sc.svg)return;
-  sc.svg.setAttribute('viewBox',sc.vb.map(v=>v.toFixed(2)).join(' '));
-  const k=$('#scheme').clientWidth/sc.vb[2];
-  if(Math.abs(k-sc.k)>.0005){sc.k=k;layoutPins()}
-  placeCard();
+function viewTo(x,y,w,ms){ /* centre on a scheme point; w = visible width in scheme units */
+  const r=$('#scheme').getBoundingClientRect(),k=r.width/w;
+  const tr=d3.zoomIdentity.translate(r.width/2-x*k,r.height/2-y*k).scale(k);
+  const s=d3.select(sc.svg);(ms?s.transition().duration(ms).ease(d3.easeCubicInOut):s).call(zoomB.transform,tr);
 }
-
 /* callout card anchored to the target station */
 function renderCard(){
   const box=$('#sc-card');const id=sc.target;
@@ -609,7 +641,7 @@ function renderCard(){
 }
 function placeCard(){
   const box=$('#sc-card');if(!sc.target||!sc.svg)return;
-  const[x,y]=SC.pos[sc.target],m=sc.svg.getScreenCTM(),r=$('#scheme').getBoundingClientRect();
+  const[x,y]=SC.pos[sc.target],m=sc.vp.getScreenCTM(),r=$('#scheme').getBoundingClientRect();
   const sx=m.a*x+m.e-r.left,sy=m.d*y+m.f-r.top;
   const w=box.offsetWidth,h=box.offsetHeight;
   let left=Math.min(Math.max(sx-30,12),r.width-w-12),top=sy+22,below=false;
@@ -618,7 +650,7 @@ function placeCard(){
 }
 
 /* pointer: hover picks the nearest station, the spotlight goes to the nearest place with lessons */
-function toScheme(e){const m=sc.svg.getScreenCTM().inverse();return[m.a*e.clientX+m.c*e.clientY+m.e,m.b*e.clientX+m.d*e.clientY+m.f]}
+function toScheme(e){const m=sc.vp.getScreenCTM().inverse();return[m.a*e.clientX+m.c*e.clientY+m.e,m.b*e.clientX+m.d*e.clientY+m.f]}
 function pickAt(e){
   const h=e.target.closest&&e.target.closest('.hit');if(!h)return null;
   const st=SC.st.find(s=>s.id===h.dataset.sid);if(!st)return null;
@@ -628,40 +660,28 @@ function pickAt(e){
 }
 let leaveT;
 function bindScheme(){
-  const box=$('#scheme');let drag=null,moved=false;const ptrs=new Map();
+  const box=$('#scheme'),r=box.getBoundingClientRect();
+  zoomB=d3.zoom().scaleExtent([r.width/(W0*1.25),r.width/280])
+    .on('start',()=>box.classList.add('drag')).on('end',()=>box.classList.remove('drag')).on('zoom',onZoom);
+  d3.select(sc.svg).call(zoomB).on('dblclick.zoom',null);
+  d3.select(sc.svg).on('dblclick',e=>{const p=d3.pointer(e,sc.svg);d3.select(sc.svg).transition().duration(350).call(zoomB.scaleBy,2,p)});
   box.addEventListener('pointermove',e=>{
-    if(ptrs.has(e.pointerId)){ptrs.set(e.pointerId,e);
-      if(ptrs.size===2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(drag.d)zoomAt(drag.d/d,(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2,false);drag.d=d;return}
-      if(drag){const k=sc.vb[2]/box.clientWidth,dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
-        if(moved){sc.tvb=null;sc.vb[0]-=dx*k;sc.vb[1]-=dy*k;drag.x=e.clientX;drag.y=e.clientY;applyVB();box.classList.add('drag')}}
-      return}
-    if(e.pointerType!=='mouse'||sc.pinned||e.target.closest('#sc-card'))return;
+    if(e.buttons||e.pointerType!=='mouse'||sc.pinned||e.target.closest('#sc-card'))return;
     const hit=pickAt(e);
     if(hit){clearTimeout(leaveT);setTarget(hit.id,hit.st)}
     else{clearTimeout(hoverT);clearTimeout(leaveT);if(lit)leaveT=setTimeout(()=>{if(!sc.pinned)setTarget(null)},160)}
   });
-  box.addEventListener('pointerdown',e=>{if(e.target.closest('#sc-card'))return;ptrs.set(e.pointerId,e);box.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};moved=false});
-  const up=e=>{if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);box.classList.remove('drag');
-    if(!moved&&!ptrs.size){const hit=pickAt(e);
-      if(hit&&hit.id)select(hit.id,false);
-      else if(hit){sc.pinned=null;setTarget(null,hit.st,true)}
-      else{sc.pinned=null;if(state.sel)select(null);else setTarget(null)}}
-    if(!ptrs.size)drag=null};
-  box.addEventListener('pointerup',up);box.addEventListener('pointercancel',up);
+  box.addEventListener('click',e=>{
+    if(e.defaultPrevented||e.target.closest('#sc-card'))return;
+    const hit=pickAt(e);
+    if(hit&&hit.id)select(hit.id,false);
+    else if(hit){sc.pinned=null;setTarget(null,hit.st,true)}
+    else{sc.pinned=null;if(state.sel)select(null);else setTarget(null)}
+  });
   box.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!sc.pinned){clearTimeout(leaveT);leaveT=setTimeout(()=>setTarget(null),260)}});
-  box.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(e.deltaY*(e.ctrlKey?.012:.0022)),e.clientX,e.clientY,true)},{passive:false});
-  $$('#sc-zoom button').forEach(b=>b.onclick=()=>{const z=+b.dataset.z;if(!z)return fitScheme(true);const r=box.getBoundingClientRect();zoomAt(1/z,r.left+r.width/2,r.top+r.height/2,true)});
+  $$('#sc-zoom button').forEach(b=>b.onclick=()=>{const z=+b.dataset.z;if(!z)return fitScheme(true);d3.select(sc.svg).transition().duration(350).ease(d3.easeCubicInOut).call(zoomB.scaleBy,z)});
 }
-function zoomAt(f,cx,cy,anim){
-  const r=$('#scheme').getBoundingClientRect(),base=sc.tvb||sc.vb,[x,y,w,h]=base;
-  const nw=Math.min(Math.max(w*f,320),W0*1.3),k=nw/w;
-  const px=x+(cx-r.left)/r.width*w,py=y+(cy-r.top)/r.height*h;
-  const to=[px-(px-x)*k,py-(py-y)*k,nw,h*k];
-  if(anim){sc.tvb=to;kick()}else{sc.tvb=null;sc.vb=to;applyVB()}
-}
-function fitScheme(anim){const r=$('#scheme').getBoundingClientRect(),a=r.width/r.height;
-  let w=W0,h=H0;if(w/h<a)w=h*a;else h=w/a;const to=[VB0[0]+(W0-w)/2,VB0[1]+(H0-h)/2,w,h];
-  if(anim){sc.tvb=to;kick()}else{sc.vb=to;applyVB()}}
+function fitScheme(anim){const b=$('#scheme');viewTo(VB0[0]+W0/2,VB0[1]+H0/2,Math.max(W0,H0*b.clientWidth/b.clientHeight)*1.02,anim?450:0)}
 function schemeSelect(p,fly){
   if(!sc.ready)return;
   if(!p){sc.pinned=null;setTarget(null);return}
@@ -669,7 +689,7 @@ function schemeSelect(p,fly){
   if(!sid||!SC.pos[sid])return;
   const id=MEET.has(sid)?sid:null;
   sc.pinned=id||null;setTarget(id,SC.st.find(s=>s.id===sid),true);
-  if(fly){const[x,y]=SC.pos[sid],r=$('#scheme').getBoundingClientRect(),w=Math.min(sc.vb[2],1100),h=w*r.height/r.width;sc.tvb=[x-w/2,y-h/2,w,h];kick()}
+  if(fly){const[x,y]=SC.pos[sid],cur=$('#scheme').clientWidth/sc.k;viewTo(x,y,Math.min(cur,1100),600)}
 }
 function focusStation(sid){ /* list hover -> spotlight */
   if(!sc.ready||sc.pinned)return;
