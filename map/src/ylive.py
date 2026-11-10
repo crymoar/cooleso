@@ -27,12 +27,13 @@ while True:
             if d==0: end=t.start()+u.end(); break
         res+=b0[cur:t.start()]
         blk=b0[t.start():end]
-        if not kept_bg or '<text' in blk: res+=blk; kept_bg=True
+        pass  # decorations (river, icons, line badges) dropped
         cur=end; continue
     if not closing: stack.append(tag)
     elif stack: stack.pop()
     res+=b0[cur:t.end()]; cur=t.end()
 res+=b0[dec_end:]
+res=re.sub(r'<circle[^>]*\br="16"[^>]*>(</circle>)?','',res)
 css='<style>text{font-family:"YS Text",Inter,Arial,Helvetica,sans-serif}.scheme-objects-view__label circle{visibility:hidden;opacity:0}</style>'
 svg=f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3000 3500">{css}<g id="objects">{res}</g><g id="labels">{b1}</g></svg>'
 open(OUT,'w').write(svg); print(len(svg), 'nested svgs left:', svg.count('<svg')-1)

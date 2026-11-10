@@ -122,6 +122,7 @@ button{cursor:pointer}
 .sc-msg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:600}
 #scheme svg text{font-family:"YS Text",Inter,Arial,Helvetica,sans-serif}
 #scheme .lb{cursor:pointer}
+#hits .hit{fill:transparent;cursor:pointer}
 #scheme .lb.meet text{font-weight:700}
 .glow{fill:var(--brand);opacity:.45;transition:opacity .3s}
 .glow.on{opacity:.95}
@@ -131,7 +132,11 @@ button{cursor:pointer}
 #veil.on{opacity:.78}
 .pin{pointer-events:none;transition:opacity .25s}
 .pin.hide{opacity:0}
-.sc-card{position:absolute;z-index:6;transition-delay:.12s;width:min(280px,calc(100% - 24px));padding:12px 14px 13px;border-radius:14px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
+.kp{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:7px;font-size:12px;font-weight:800;letter-spacing:.01em}
+.kp::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.kp.mt{background:#fdf0d6;color:#9a5d00}.kp.at{background:#dcecfa;color:#1a6fb0}.kp.none{background:#eeefec;color:#62676c}
+.sc-card .kpp{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.sc-card .kp{height:26px;font-size:13px}
+.sc-card{position:absolute;z-index:6;width:min(280px,calc(100% - 24px));padding:12px 14px 13px;border-radius:14px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
 .sc-card.on{opacity:1;transform:none;pointer-events:auto}
 .sc-card .from{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}
 .sc-card b{display:block;font-size:16px;font-weight:800;line-height:1.2}
@@ -283,7 +288,7 @@ function icon(p){
 const dots=lines=>`<span class="dots">${lines.map(l=>`<i class="dot" style="--c:${lineColor(l)}" title="${esc(l)}"></i>`).join('')}</span>`;
 const SVC={mt:'#e7a329',at:'#228cda',office:'#247958',moto:'#168c91',none:'#4b4f54'};
 const svcOf=p=>p.type==='of'?'office':p.type==='mo'?'moto':p.kpp.length===2?'both':p.kpp[0]||'none';
-const kppTags=p=>p.kpp.map(k=>`<span class="tag" style="background:${SVC[k]}1f;color:${k==='mt'?'#8a5a00':SVC[k]}">${k==='mt'?'МКПП':'АКПП'}</span>`).join('');
+const kppTags=p=>p.type!=='st'?'':p.kpp.length?p.kpp.map(k=>`<span class="kp ${k}">${k==='mt'?'МКПП':'АКПП'}</span>`).join(''):'<span class="kp none">КПП уточняется</span>';
 function sub(p){
   if(p.type==='of'||p.type==='mo')return `${dots(p.lines)}<span>м. ${esc(p.station)}</span><span class="tag" style="background:${SVC[svcOf(p)]}1f;color:${SVC[svcOf(p)]}">${p.type==='of'?'Офис':p.sub==='moto_indoor'?'Мото · в помещении':'Мото · на улице'}</span>`;
   if(p.type==='st')return `${dots(p.lines)}<span>${esc(p.lines.length>1?p.lines.map(short).join(' · '):short(p.lines[0]||KIND[p.kind]))}</span>${kppTags(p)}`;
@@ -450,7 +455,7 @@ const SC=D.scheme, SCHEME_URL=window.KOLESO_SCHEME_URL||'metro-scheme.svg';
 const NS='http://www.w3.org/2000/svg',VB0=SC.vb,W0=VB0[2],H0=VB0[3];
 const el=(n,a={},p)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e};
 const fold2=s=>fold(s).replace(/[\s\-.«»"—]/g,'');
-const SPOT_R=230, PICK_R=60, SEEK_R=420, GLOW_R=24;
+const SPOT_R=230, PICK_R=60, SEEK_R=150, GLOW_R=24;
 SC.k={};
 let sc={ready:false,loading:false,vb:[...VB0],tvb:null,svg:null,k:1,glows:{},target:null,pinned:null,spot:{x:0,y:0,r:0,tx:0,ty:0,tr:0}};
 
@@ -479,6 +484,10 @@ async function loadScheme(){
   sc.veil=el('path',{id:'veil','fill-rule':'evenodd',d:''},svg);
   sc.gMarks=el('g',{id:'marks'});svg.querySelector('#labels').before(sc.gMarks);
   sc.gPins=el('g',{id:'pins'},svg);
+  const gh=el('g',{id:'hits'},svg);
+  sc.labels.forEach(l=>{if(!l.id)return;const b=l.el.getBBox();
+    el('rect',{class:'hit','data-sid':l.id,x:b.x-4,y:b.y-3,width:b.width+8,height:b.height+6},gh)});
+  SC.st.forEach(s=>el('circle',{class:'hit','data-sid':s.id,cx:s.x,cy:s.y,r:11},gh));
   sc.svg=svg;sc.gGlow=gGlow;
   sc.ready=true;bindScheme();renderMarks();startView();
   if(state.sel)schemeSelect(BY_ID[state.sel],true);
@@ -531,27 +540,36 @@ function stopsBetween(from,toId){ /* stops along the same line, if any */
 }
 
 /* spotlight target */
-const HOVER_DELAY=220, GROW_MS=480, MOVE_MS=320;
-let hoverT=null, spotAnim=0, spot={x:0,y:0,r:0,on:false};
+const HOVER_DELAY=260, GROW_MS=420, MOVE_MS=300, CARD_MS=200, SHRINK_MS=320;
+let hoverT=null, seqT=null, spotAnim=0, spot={x:0,y:0,r:0,on:false};
 function drawSpot(){const{x,y,r}=spot;sc.veil.setAttribute('d',r>0.5?`M-6000-6000H9000V9000H-6000Z M${x-r} ${y}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z`:'M-6000-6000H9000V9000H-6000Z')}
-function animateSpot(to,ms){
-  cancelAnimationFrame(spotAnim);const from={...spot},t0=performance.now();
-  const f=now=>{const k=Math.min(1,(now-t0)/ms),e=1-Math.pow(1-k,3);
+function animateSpot(to,ms,done){
+  cancelAnimationFrame(spotAnim);const from={x:spot.x,y:spot.y,r:spot.r},t0=performance.now();
+  const f=now=>{const k=Math.min(1,(now-t0)/ms),e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
     spot.x=from.x+(to.x-from.x)*e;spot.y=from.y+(to.y-from.y)*e;spot.r=from.r+(to.r-from.r)*e;drawSpot();
-    if(k<1)spotAnim=requestAnimationFrame(f)};
+    if(k<1)spotAnim=requestAnimationFrame(f);else if(done)done()};
   spotAnim=requestAnimationFrame(f);
 }
+function cardOff(){$('#sc-card').classList.remove('on')}
+/* hover -> wait -> circle grows -> card appears; leave -> card fades -> circle shrinks -> veil fades */
 function setTarget(id,fromStation,now){
-  clearTimeout(hoverT);
-  if(!id){sc.target=null;sc.from=null;sc.veil.classList.remove('on');spot.on=false;renderCard();layoutPins();hoverList(null);return}
-  if(id===sc.target&&spot.on){sc.from=fromStation||sc.from;renderCard();return}
+  clearTimeout(hoverT);clearTimeout(seqT);
+  if(!id){
+    if(!sc.target&&!spot.on)return;
+    sc.target=null;sc.from=null;cardOff();layoutPins();hoverList(null);
+    seqT=setTimeout(()=>{animateSpot({x:spot.x,y:spot.y,r:0},SHRINK_MS,()=>{spot.on=false});sc.veil.classList.remove('on')},CARD_MS);
+    return;
+  }
+  if(id===sc.target&&spot.on){if(fromStation&&fromStation!==sc.from){sc.from=fromStation;renderCard()}return}
   const go=()=>{
-    const[x,y]=SC.pos[id];sc.target=id;sc.from=fromStation||null;
-    if(spot.on)animateSpot({x,y,r:SPOT_R},MOVE_MS);
-    else{spot={x,y,r:0,on:true};drawSpot();animateSpot({x,y,r:SPOT_R},GROW_MS)}
-    sc.veil.classList.add('on');renderCard();layoutPins();hoverList(id);
+    const[x,y]=SC.pos[id],moving=spot.on&&spot.r>1;
+    sc.target=id;sc.from=fromStation||null;cardOff();layoutPins();hoverList(id);
+    sc.veil.classList.add('on');
+    if(!moving){spot={x,y,r:0,on:true};drawSpot()}
+    spot.on=true;
+    animateSpot({x,y,r:SPOT_R},moving?MOVE_MS:GROW_MS,()=>{if(sc.target===id)renderCard()});
   };
-  if(now||spot.on)go();else hoverT=setTimeout(go,HOVER_DELAY);
+  if(now)go();else hoverT=setTimeout(go,HOVER_DELAY);
 }
 
 /* view box easing runs only while zooming */
@@ -578,14 +596,14 @@ function renderCard(){
   if(sc.from&&sc.from.id!==id&&sc.from.id!==p.sid){const n=stopsBetween(sc.from,id);from=`<div class="from">От «${esc(sc.from.n)}» ближайшее место занятий${n?` — ${plural(n,'остановка','остановки','остановок')}`:''}</div>`}
   box.innerHTML=from+`<b>${esc(p.name)}</b><div class="r">${p.lines.map(l=>`${dots([l])}${esc(short(l))}`).join(' · ')}</div>`+
     (p.type==='of'?`<div class="r ok">Офис автошколы${p.note?' · '+esc(p.note.split('\n').slice(1).join(' ')):''}</div>`:p.type==='mo'?`<div class="r ok">Мотоплощадка · ${p.sub==='moto_indoor'?'в помещении':'на улице'}</div>`:
-    `<div class="r ok">Инструктор встречает у станции${p.kpp.length?' · '+p.kpp.map(k=>k==='mt'?'МКПП':'АКПП').join(', '):''}</div>`)+
+    `<div class="kpp">${p.kpp.length?p.kpp.map(k=>`<span class="kp ${k}">${k==='mt'?'МКПП · механика':'АКПП · автомат'}</span>`).join(''):'<span class="kp none">Коробку уточните при записи</span>'}</div><div class="r ok">Инструктор встречает у станции</div>`)+
     (ads.length?`<div class="r">Площадки рядом: ${ads.slice(0,2).map(a=>esc(a.p.n)+', '+a.t+' мин').join('; ')}</div>`:'')+
     `<div class="more"><button type="button" data-open="${id}">Подробнее</button></div>`;
   box.querySelector('[data-open]').onclick=()=>select(id,false);
-  box.classList.add('on');placeCard();
+  placeCard();requestAnimationFrame(()=>box.classList.add('on'));
 }
 function placeCard(){
-  const box=$('#sc-card');if(!sc.target||!box.classList.contains('on'))return;
+  const box=$('#sc-card');if(!sc.target||!sc.svg)return;
   const[x,y]=SC.pos[sc.target],m=sc.svg.getScreenCTM(),r=$('#scheme').getBoundingClientRect();
   const sx=m.a*x+m.e-r.left,sy=m.d*y+m.f-r.top;
   const w=box.offsetWidth,h=box.offsetHeight;
@@ -597,12 +615,8 @@ function placeCard(){
 /* pointer: hover picks the nearest station, the spotlight goes to the nearest place with lessons */
 function toScheme(e){const m=sc.svg.getScreenCTM().inverse();return[m.a*e.clientX+m.c*e.clientY+m.e,m.b*e.clientX+m.d*e.clientY+m.f]}
 function pickAt(e){
-  const tgt=e.target.closest&&e.target.closest('.lb,.scheme-objects-view__station');
-  if(!tgt)return null;
-  let st=null;
-  if(tgt.classList.contains('lb')){const id=SC.k[tgt.dataset.k];st=id&&SC.st.find(s=>s.id===id)}
-  if(!st){const b=tgt.getBBox();st=nearestStation(b.x+b.width/2,b.y+b.height/2,40)}
-  if(!st)return null;
+  const h=e.target.closest&&e.target.closest('.hit');if(!h)return null;
+  const st=SC.st.find(s=>s.id===h.dataset.sid);if(!st)return null;
   const svc=[...MEET].find(i=>BY_ID[i]&&BY_ID[i].sid===st.id);
   const id=MEET.has(st.id)?st.id:svc||nearestMeet(st.x,st.y,SEEK_R);
   return id?{id,st}:null;
@@ -618,8 +632,8 @@ function bindScheme(){
       return}
     if(e.pointerType!=='mouse'||sc.pinned||e.target.closest('#sc-card'))return;
     const hit=pickAt(e);
-    if(hit){clearTimeout(leaveT);if(hit.id!==sc.target||hit.st!==sc.from)setTarget(hit.id,hit.st)}
-    else if(sc.target){clearTimeout(leaveT);leaveT=setTimeout(()=>{if(!sc.pinned)setTarget(null)},120)}
+    if(hit){clearTimeout(leaveT);setTarget(hit.id,hit.st)}
+    else{clearTimeout(hoverT);clearTimeout(leaveT);if(sc.target)leaveT=setTimeout(()=>{if(!sc.pinned)setTarget(null)},160)}
   });
   box.addEventListener('pointerdown',e=>{if(e.target.closest('#sc-card'))return;ptrs.set(e.pointerId,e);box.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};moved=false});
   const up=e=>{if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);box.classList.remove('drag');
