@@ -7,7 +7,7 @@
 <meta name="description" content="Места встречи с инструктором в Москве и области: у метро и по адресу. Поиск, фильтры, время пешком от станции.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 :root{
@@ -120,24 +120,28 @@ button{cursor:pointer}
 #scheme.drag{cursor:grabbing}
 #scheme svg{display:block;width:100%;height:100%}
 .sc-msg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:600}
-#geo path{transition:opacity .18s}
-.focus #geo path:not(.w){opacity:.13}
-.focus #geo path.on{opacity:1}
-.lb{font:500 10.8px "Inter Tight",Arial,sans-serif;fill:#252225;stroke:#fff;stroke-width:3px;stroke-linejoin:round;paint-order:stroke fill;cursor:pointer;transition:opacity .18s}
-.lb.fixed{fill:#252225}
-.lb:hover,.lb.cur{font-weight:700}
-.focus .lb{opacity:.22}
-.focus .lb.on{opacity:1}
-.lb.meet{font-weight:700}
+#scheme svg text{font-family:Inter,"Inter Tight",Arial,sans-serif}
+#scheme .lb{cursor:pointer}
+#scheme .lb.meet{font-weight:700}
+.glow{fill:var(--brand);opacity:.45;transition:opacity .3s}
+.glow.on{opacity:.95}
+
 .hit{fill:transparent;cursor:pointer}
-.mk{fill:var(--brand);stroke:#151717;stroke-width:2.6;pointer-events:none;transition:opacity .18s}
-.focus .mk{opacity:.35}.focus .mk.on{opacity:1}
-.ring{fill:none;stroke:#151717;stroke-width:2.5;stroke-dasharray:4 3;pointer-events:none}
-.spot{fill:rgba(245,206,0,.10);stroke:rgba(21,23,23,.25);stroke-width:1;stroke-dasharray:3 4;pointer-events:none}
-.sc-card{position:absolute;z-index:6;max-width:260px;padding:10px 12px;border-radius:12px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;pointer-events:none}
-.sc-card b{display:block;font-size:15px;font-weight:800;margin-bottom:3px}
-.sc-card .r{display:flex;align-items:center;gap:6px;color:var(--ink-2);margin-top:2px}
+#veil{fill:#fff;opacity:0;transition:opacity .35s ease;pointer-events:none}
+#veil.on{opacity:.72}
+.pin{pointer-events:none;transition:opacity .25s}
+.pin.hide{opacity:0}
+.sc-card{position:absolute;z-index:6;width:min(280px,calc(100% - 24px));padding:12px 14px 13px;border-radius:14px;background:#fff;box-shadow:var(--shadow);font-size:13px;font-weight:600;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
+.sc-card.on{opacity:1;transform:none;pointer-events:auto}
+.sc-card .from{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.sc-card b{display:block;font-size:16px;font-weight:800;line-height:1.2}
+.sc-card .r{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--ink-2);margin-top:5px}
 .sc-card .ok{color:var(--ok)}
+.sc-card .more{margin-top:10px;display:flex;gap:6px}
+.sc-card .more button{height:32px;padding:0 12px;border:0;border-radius:9px;background:var(--brand);font-weight:800;font-size:13px}
+.sc-card::after{content:"";position:absolute;left:var(--ax,20px);top:-6px;width:12px;height:12px;background:#fff;transform:rotate(45deg);border-radius:2px;box-shadow:-2px -2px 3px rgba(0,0,0,.04)}
+.sc-card.below::after{top:auto;bottom:-6px}
+@media (prefers-reduced-motion:reduce){#veil,.sc-card,.glow,.lb{transition:none}}
 .sc-zoom{position:absolute;right:14px;bottom:14px;z-index:5;display:flex;flex-direction:column;border-radius:12px;background:#fff;box-shadow:var(--shadow);overflow:hidden}
 .sc-zoom button{width:40px;height:40px;border:0;background:none;font-size:20px;font-weight:600}
 .sc-zoom button+button{border-top:1px solid var(--line)}
@@ -153,7 +157,7 @@ button{cursor:pointer}
 .maplibregl-popup-tip{display:none}
 .maplibregl-ctrl-attrib{font-size:10.5px}
 .fallback{display:none;position:absolute;inset:0;place-items:center;padding:24px;text-align:center;color:var(--muted);z-index:4;background:var(--bg)}
-.no-map .fallback{display:grid}
+.no-map .is-map .fallback{display:grid}
 .foot{padding:10px 20px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);font-weight:500}
 
 @media (max-width:820px){
@@ -206,13 +210,12 @@ button{cursor:pointer}
   </aside>
   <section class="map-wrap" aria-label="Карта">
     <div id="map"></div>
-    <div id="scheme" hidden><div class="sc-msg" id="sc-msg">Загружаем схему метро…</div></div>
-    <div class="sc-card" id="sc-card" hidden></div>
+    <div id="scheme" hidden><div class="sc-card" id="sc-card"></div></div>
     <div class="sc-zoom" id="sc-zoom" hidden><button data-z="1.5" aria-label="Приблизить">+</button><button data-z="0.667" aria-label="Отдалить">−</button><button data-z="0" aria-label="Показать всю схему">⤢</button></div>
     <div class="views" role="tablist" aria-label="Вид"><button role="tab" id="v-scheme" aria-selected="true">Схема метро</button><button role="tab" id="v-map" aria-selected="false">Карта города</button></div>
     <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="true">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
-    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lg-cl" style="border-color:#151717"></i>Место встречи у станции</span><span class="lg-sc" style="color:var(--muted)">Наведите на станцию — подсветим линию и соседей</span></div>
+    <div class="legend" aria-hidden="true"><span class="lg-mp"><i class="lg-st"></i>Встреча у метро</span><span class="lg-mp"><i class="lg-ad"></i>Встреча по адресу</span><span class="lg-mp"><i class="lg-cl"></i>Несколько мест</span><span class="lg-sc"><i class="lg-cl" style="opacity:.75"></i>Здесь встречает инструктор</span><span class="lg-sc" style="color:var(--muted)">Наведите на станцию — покажем ближайшее место занятий</span></div>
     <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
   </section>
 </div>
@@ -419,7 +422,7 @@ function highlight(p,fly){
   map.getSource('links').setData(fc(links));
 }
 function hover(id){ /* list -> map */
-  if(sc.ready&&view==='scheme'){const p=id&&BY_ID[id];const sid=p&&(p.type==='st'?p.id:(p.raw.nb[0]||{}).s);if(sid)focusStation(sid);else if(sc.pinned){sc.focusId=null;focusStation(sc.pinned)}else focusStation(null)}
+  if(sc.ready&&view==='scheme'&&!sc.pinned){const p=id&&BY_ID[id];const sid=p&&(p.type==='st'?p.id:(p.raw.nb[0]||{}).s);focusStation(sid&&MEET.has(sid)?sid:null)}
   if(!ready)return;
   map.getSource('sel').setData(fc(id?[pt(BY_ID[id],{})]:state.sel?[pt(BY_ID[state.sel],{})]:[]));
 }
@@ -428,150 +431,196 @@ function hoverList(id){ /* map -> list */
   if(id){const b=$(`#list .item[data-id="${CSS.escape(id)}"]`);if(b){b.classList.add('hover');b.scrollIntoView({block:'nearest'})}}
 }
 
-/* ---------- metro scheme ---------- */
+/* ---------- metro scheme: Yandex Metro scheme, drawn 1:1 from its data ---------- */
 const SC=D.scheme, SCHEME_URL=window.KOLESO_SCHEME_URL||'metro-scheme.svg';
-const NS='http://www.w3.org/2000/svg';
-const W0=1440,H0=1727;
-let sc={ready:false,vb:[0,0,W0,H0],svg:null,paths:[],boxes:null,lit:new Set(),labels:[],marks:{},focusId:null,pinned:null};
-const lineIdsOf=sid=>Object.entries(SC.lines).filter(([,l])=>l.st.includes(sid)).map(([id])=>id);
-const stName=sid=>(D.allst[sid]||{}).n||sid;
+const NS='http://www.w3.org/2000/svg',VB0=SC.vb,W0=VB0[2],H0=VB0[3];
 const el=(n,a={},p)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e};
+const fold2=s=>fold(s).replace(/[\s\-.«»"—]/g,'');
+const SPOT_R=230, PICK_R=60, SEEK_R=420, GLOW_R=24;
+SC.k={};
+let sc={ready:false,loading:false,vb:[...VB0],tvb:null,svg:null,k:1,glows:{},target:null,pinned:null,spot:{x:0,y:0,r:0,tx:0,ty:0,tr:0}};
+
+function meetIds(){return new Set(visible().filter(p=>p.type==='st'&&SC.pos[p.id]).map(p=>p.id))}
+let MEET=new Set();
 
 async function loadScheme(){
-  if(sc.loading)return;sc.loading=true;
-  try{
-    const r=await fetch(SCHEME_URL);if(!r.ok)throw Error(r.status);
-    const txt=await r.text();
-    const geo=new DOMParser().parseFromString(txt,'image/svg+xml').documentElement;
-    const svg=el('svg',{viewBox:sc.vb.join(' '),'aria-label':'Схема метро Москвы с местами занятий',role:'img'});
-    const g=el('g',{id:'geo'},svg);
-    for(const n of [...geo.childNodes])g.appendChild(document.importNode(n,true));
-    el('circle',{class:'spot',id:'spot',r:0,cx:-99,cy:-99},svg);
-    const lg=el('g',{id:'labels'},svg), mg=el('g',{id:'marks'},svg);
-    el('circle',{class:'ring',id:'ring',r:0,cx:-99,cy:-99},svg);
-    SC.labels.forEach((l,i)=>{
-      const t=el('text',{class:'lb'+(l.fix?' fixed':''),x:l.x,y:l.y,'text-anchor':{s:'start',e:'end',m:'middle'}[l.a],'data-i':i},lg);
-      l.t.forEach((s,k)=>{const ts=el('tspan',{x:l.x,dy:k?'1.15em':0},t);ts.textContent=s});
-      l.el=t;
-    });
-    /* invisible hit targets on station positions */
-    for(const[sid,[x,y]]of Object.entries(SC.pos))el('circle',{class:'hit',cx:x,cy:y,r:9,'data-sid':sid},mg);
-    $('#scheme').replaceChildren(svg);sc.svg=svg;
-    sc.paths=[...g.querySelectorAll('path')].filter(p=>!p.closest('clipPath'));
-    sc.paths.forEach(p=>{const f=(p.getAttribute('fill')||'').toLowerCase();p._f=f;if(f==='#fff'||f==='#ffffff'||f==='#fdfdfd')p.classList.add('w')});
-    sc.ready=true;bindScheme();renderMarks();fitScheme();
-    (window.requestIdleCallback||setTimeout)(measurePaths);
-    if(state.sel)schemeSelect(BY_ID[state.sel],true);
-  }catch(e){console.warn(e);$('#sc-msg').textContent='Схема метро не загрузилась. Переключитесь на «Карту города».'}
-}
-function measurePaths(){ /* bbox of every path in scheme coordinates, once */
-  const inv=sc.svg.getScreenCTM().inverse();
-  sc.boxes=sc.paths.map(p=>{const b=p.getBBox(),m=inv.multiply(p.getScreenCTM());
-    const xs=[b.x,b.x+b.width],ys=[b.y,b.y+b.height];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
-    for(const x of xs)for(const y of ys){const X=m.a*x+m.c*y+m.e,Y=m.b*x+m.d*y+m.f;x0=Math.min(x0,X);x1=Math.max(x1,X);y0=Math.min(y0,Y);y1=Math.max(y1,Y)}
-    return[x0,y0,x1,y1]});
-}
-/* stations to light up: same line ±3 stops, plus anything within radius */
-const RADIUS=120,HOPS=3;
-function neighbourhood(sid){
-  const set=new Set([sid]),lids=lineIdsOf(sid),c=SC.pos[sid];
-  for(const lid of lids){const st=SC.lines[lid].st,i=st.indexOf(sid),ring=['5','95','97'].includes(lid);
-    for(let k=-HOPS;k<=HOPS;k++){let j=i+k;if(ring)j=(j+st.length)%st.length;if(st[j])set.add(st[j])}}
-  if(c)for(const[s,[x,y]]of Object.entries(SC.pos))if(Math.hypot(x-c[0],y-c[1])<RADIUS)set.add(s);
-  return{set,lids,c};
-}
-function focusStation(sid){
-  if(!sc.ready||sc.focusId===sid)return;sc.focusId=sid;
-  const root=sc.svg;
-  if(!sid){root.classList.remove('focus');sc.lit.forEach(p=>p.classList.remove('on'));sc.lit.clear();SC.labels.forEach(l=>l.el.classList.remove('on','cur'));setSpot(null);Object.values(sc.marks).forEach(m=>m.classList.remove('on'));return}
-  const{set,lids,c}=neighbourhood(sid);
-  const cols=new Set(lids.flatMap(l=>SC.lines[l].pdf));
-  const next=new Set();
-  sc.paths.forEach((p,i)=>{
-    if(cols.has(p._f)){next.add(p);return}
-    if(c&&sc.boxes){const[x0,y0,x1,y1]=sc.boxes[i];const dx=Math.max(x0-c[0],0,c[0]-x1),dy=Math.max(y0-c[1],0,c[1]-y1);if(dx*dx+dy*dy<RADIUS*RADIUS&&(x1-x0)<RADIUS*3&&(y1-y0)<RADIUS*3)next.add(p)}
+  if(sc.ready||sc.loading)return;sc.loading=true;
+  const host=$('#scheme');
+  let txt;
+  try{const r=await fetch(SCHEME_URL);if(!r.ok)throw Error(r.status);txt=await r.text()}
+  catch(e){console.warn(e);sc.loading=false;const m=document.createElement('div');m.className='sc-msg';m.textContent='Схема метро не загрузилась. Обновите страницу.';host.append(m);return}
+  const svg=document.importNode(new DOMParser().parseFromString(txt,'image/svg+xml').documentElement,true);
+  svg.setAttribute('role','img');svg.setAttribute('aria-label','Схема метро Москвы с местами занятий');
+  const gGlow=el('g',{id:'glows'});svg.querySelector('#bg').after(gGlow);   /* highlighter under the lines */
+  sc.labels=[...svg.querySelectorAll('text.tx[data-s]')].map(t=>{
+    const id=SC.y2h[t.dataset.s]||('y'+t.dataset.s);const key='Y|'+t.dataset.s;
+    t.classList.add('lb');t.dataset.k=key;SC.k[key]=id;
+    const twin=t.previousElementSibling;return{el:t,id,ids:[id]};
   });
-  sc.lit.forEach(p=>{if(!next.has(p))p.classList.remove('on')});next.forEach(p=>p.classList.add('on'));sc.lit=next;
-  SC.labels.forEach(l=>{const on=l.ids.some(s=>set.has(s));l.el.classList.toggle('on',on);l.el.classList.toggle('cur',l.ids.includes(sid))});
-  Object.entries(sc.marks).forEach(([s,m])=>m.classList.toggle('on',set.has(s)));
-  root.classList.add('focus');setSpot(c);
+  const md=el('defs',{},svg);
+  const rg=el('radialGradient',{id:'spotg'},md);
+  el('stop',{offset:'0','stop-color':'#000'},rg);el('stop',{offset:'.6','stop-color':'#000'},rg);el('stop',{offset:'1','stop-color':'#fff'},rg);
+  const mask=el('mask',{id:'spotm',maskUnits:'userSpaceOnUse',x:-6000,y:-6000,width:18000,height:18000},md);
+  el('rect',{x:-6000,y:-6000,width:18000,height:18000,fill:'#fff'},mask);
+  sc.hole=el('circle',{cx:-999,cy:-999,r:0,fill:'url(#spotg)'},mask);
+  el('rect',{id:'veil',x:-6000,y:-6000,width:18000,height:18000,mask:'url(#spotm)'},svg);
+  sc.gPins=el('g',{id:'pins'},svg);
+  host.prepend(svg);sc.svg=svg;sc.gGlow=gGlow;
+  sc.ready=true;bindScheme();renderMarks();startView();tick();
+  if(state.sel)schemeSelect(BY_ID[state.sel],true);
 }
-function setSpot(c){const s=$('#spot');if(!c){s.setAttribute('r',0);return}s.setAttribute('cx',c[0]);s.setAttribute('cy',c[1]);s.setAttribute('r',RADIUS)}
-function card(sid,evt){
-  const box=$('#sc-card');if(!sid){box.hidden=true;return}
-  const lids=lineIdsOf(sid),meet=PLACES.find(p=>p.type==='st'&&p.id===sid),ads=(AD_BY_ST[sid]||[]).sort((a,b)=>a.t-b.t);
-  box.innerHTML=`<b>${esc(stName(sid))}</b>${lids.map(l=>`<div class="r">${dots([SC.lines[l].n])}${esc(SC.lines[l].n)}</div>`).join('')}`+
-    (meet?`<div class="r ok">● Инструктор встречает здесь${meet.kpp.length?' · '+meet.kpp.map(k=>k==='mt'?'МКПП':'АКПП').join(', '):''}</div>`:'')+
-    (ads.length?`<div class="r">Площадки рядом: ${ads.slice(0,2).map(a=>esc(a.p.n)+' — '+a.t+' мин').join('; ')}</div>`:'')+
-    (!meet&&!ads.length?'<div class="r" style="color:var(--muted)">Занятий у этой станции нет</div>':'');
-  const r=$('#scheme').getBoundingClientRect();let x=evt.clientX-r.left+16,y=evt.clientY-r.top+16;
-  box.hidden=false;if(x+box.offsetWidth>r.width-8)x=evt.clientX-r.left-box.offsetWidth-16;if(y+box.offsetHeight>r.height-8)y=evt.clientY-r.top-box.offsetHeight-16;
-  box.style.left=x+'px';box.style.top=y+'px';
-}
+function startView(){const r=$('#scheme').getBoundingClientRect(),w=Math.min(1500,W0),h=w*r.height/r.width;sc.vb=[1520-w/2,1560-h/2,w,h];applyVB()}
+
+/* meeting markers: highlighter glow under the line + bold label; pins appear when zoomed in */
+const PIN=`<path d="M0 0C-3-5-11-10-11-18a11 11 0 1 1 22 0C11-10 3-5 0 0Z" fill="#151717" stroke="#fff" stroke-width="2"/><circle cx="0" cy="-18" r="6.2" fill="none" stroke="#f5ce00" stroke-width="2.4"/><path d="M-1.4-21.2v6.4l4.4-3.2z" fill="#fff"/>`;
 function renderMarks(){
-  if(!sc.ready)return;const mg=$('#marks');Object.values(sc.marks).forEach(m=>m.remove());sc.marks={};
-  for(const p of visible()){if(p.type!=='st'||!SC.pos[p.id])continue;const[x,y]=SC.pos[p.id];
-    sc.marks[p.id]=el('circle',{class:'mk',cx:x,cy:y,r:6.5},mg);}
-  SC.labels.forEach(l=>l.el.classList.toggle('meet',l.ids.some(s=>sc.marks[s])));
+  if(!sc.ready)return;MEET=meetIds();
+  sc.gGlow.replaceChildren();sc.gPins.replaceChildren();sc.glows={};sc.pins={};
+  for(const id of MEET){const[x,y]=SC.pos[id];
+    sc.glows[id]=el('circle',{class:'glow',cx:x,cy:y,r:GLOW_R},sc.gGlow);
+    const g=el('g',{class:'pin hide','data-x':x,'data-y':y},sc.gPins);g.innerHTML=PIN;sc.pins[id]=g;}
+  sc.labels.forEach(l=>l.el.classList.toggle('meet',l.ids.some(i=>MEET.has(i))));
+  if(sc.target&&!MEET.has(sc.target))setTarget(null);
+  layoutPins();
 }
-function sidFromEvent(e){const t=e.target.closest('[data-sid],[data-i]');if(!t)return null;if(t.dataset.sid)return t.dataset.sid;const l=SC.labels[+t.dataset.i];
-  return l.ids.find(s=>sc.marks[s])||l.ids[0]||null}
+function layoutPins(){
+  if(!sc.ready)return;const k=sc.k,near=k>=1.6;
+  for(const[id,g]of Object.entries(sc.pins)){
+    const show=near||id===sc.target;g.classList.toggle('hide',!show);
+    g.setAttribute('transform',`translate(${g.dataset.x} ${g.dataset.y-8/k}) scale(${1/k})`);
+  }
+}
+
+/* nearest station to a point, nearest meeting station to a station */
+function nearestStation(x,y,max){let b=null,bd=max;for(const s of SC.st){const d=Math.hypot(s.x-x,s.y-y);if(d<bd){bd=d;b=s}}return b}
+function nearestMeet(x,y,max){let b=null,bd=max;for(const id of MEET){const[px,py]=SC.pos[id];const d=Math.hypot(px-x,py-y);if(d<bd){bd=d;b=id}}return b}
+function stopsBetween(from,toId){ /* stops along the same line, if any */
+  const to=SC.st.find(s=>s.id===toId);if(!from||!to)return null;
+  for(const l of D.lines){const a=l.st.indexOf(from.id),b=l.st.indexOf(toId);if(a>=0&&b>=0)return Math.abs(a-b)}
+  return null;
+}
+
+/* spotlight target */
+function setTarget(id,fromStation){
+  sc.target=id;sc.from=fromStation||null;
+  $('#veil').classList.toggle('on',!!id);
+  Object.entries(sc.glows).forEach(([k,g])=>g.classList.toggle('on',k===id));
+  if(id){const[x,y]=SC.pos[id];sc.spot.tx=x;sc.spot.ty=y;sc.spot.tr=SPOT_R;if(!sc.spot.r){sc.spot.x=x;sc.spot.y=y}}
+  else sc.spot.tr=0;
+  renderCard();layoutPins();hoverList(id);
+}
+
+/* animation loop: spotlight glides, view box eases */
+function tick(){
+  const s=sc.spot,e=.2;
+  s.x+=(s.tx-s.x)*e;s.y+=(s.ty-s.y)*e;s.r+=(s.tr-s.r)*e;
+  if(s.r<1&&!s.tr)s.r=0;
+  sc.hole.setAttribute('cx',s.x.toFixed(1));sc.hole.setAttribute('cy',s.y.toFixed(1));sc.hole.setAttribute('r',(s.r+0.01).toFixed(1));
+  if(sc.tvb){const v=sc.vb,t=sc.tvb;let done=true;for(let i=0;i<4;i++){v[i]+=(t[i]-v[i])*.22;if(Math.abs(t[i]-v[i])>.3)done=false}if(done){sc.vb=[...t];sc.tvb=null}applyVB()}
+  placeCard();
+  requestAnimationFrame(tick);
+}
+function applyVB(){
+  if(!sc.svg)return;
+  sc.svg.setAttribute('viewBox',sc.vb.map(v=>v.toFixed(2)).join(' '));
+  const k=$('#scheme').clientWidth/sc.vb[2];
+  if(Math.abs(k-sc.k)>.0005){sc.k=k;layoutPins()}
+}
+
+/* callout card anchored to the target station */
+function renderCard(){
+  const box=$('#sc-card');const id=sc.target;
+  if(!id){box.classList.remove('on');return}
+  const p=BY_ID[id],ads=(AD_BY_ST[id]||[]).sort((a,b)=>a.t-b.t);
+  let from='';
+  if(sc.from&&sc.from.id!==id){const n=stopsBetween(sc.from,id);from=`<div class="from">От «${esc(sc.from.n)}» ближайшее место занятий${n?` — ${plural(n,'остановка','остановки','остановок')}`:''}</div>`}
+  box.innerHTML=from+`<b>${esc(p.name)}</b><div class="r">${p.lines.map(l=>`${dots([l])}${esc(short(l))}`).join(' · ')}</div>`+
+    `<div class="r ok">Инструктор встречает у станции${p.kpp.length?' · '+p.kpp.map(k=>k==='mt'?'МКПП':'АКПП').join(', '):''}</div>`+
+    (ads.length?`<div class="r">Площадки рядом: ${ads.slice(0,2).map(a=>esc(a.p.n)+', '+a.t+' мин').join('; ')}</div>`:'')+
+    `<div class="more"><button type="button" data-open="${id}">Подробнее</button></div>`;
+  box.querySelector('[data-open]').onclick=()=>select(id,false);
+  box.classList.add('on');placeCard();
+}
+function placeCard(){
+  const box=$('#sc-card');if(!sc.target||!box.classList.contains('on'))return;
+  const[x,y]=SC.pos[sc.target],m=sc.svg.getScreenCTM(),r=$('#scheme').getBoundingClientRect();
+  const sx=m.a*x+m.e-r.left,sy=m.d*y+m.f-r.top;
+  const w=box.offsetWidth,h=box.offsetHeight;
+  let left=Math.min(Math.max(sx-30,12),r.width-w-12),top=sy+22,below=false;
+  if(top+h>r.height-12){top=sy-h-34;below=true}
+  box.classList.toggle('below',below);box.style.left=left+'px';box.style.top=top+'px';box.style.setProperty('--ax',Math.min(Math.max(sx-left-6,14),w-26)+'px');
+}
+
+/* pointer: hover picks the nearest station, the spotlight goes to the nearest place with lessons */
+function toScheme(e){const m=sc.svg.getScreenCTM().inverse();return[m.a*e.clientX+m.c*e.clientY+m.e,m.b*e.clientX+m.d*e.clientY+m.f]}
+function pickAt(e){
+  const lab=e.target.closest&&e.target.closest('.lb');
+  let st=null;
+  if(lab){const id=SC.k[lab.dataset.k];st=SC.st.find(s=>s.id===id)||SC.st.find(s=>fold2(s.n)===fold2(lab.dataset.k.split('|')[1]))}
+  const[x,y]=toScheme(e);st=st||nearestStation(x,y,PICK_R/Math.max(sc.k,.6));
+  if(!st)return null;
+  const id=MEET.has(st.id)?st.id:nearestMeet(st.x,st.y,SEEK_R);
+  return id?{id,st}:null;
+}
+let leaveT;
 function bindScheme(){
   const box=$('#scheme');let drag=null,moved=false;const ptrs=new Map();
   box.addEventListener('pointermove',e=>{
     if(ptrs.has(e.pointerId)){ptrs.set(e.pointerId,e);
-      if(ptrs.size===2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(drag.d)zoomAt(drag.d/d,(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2);drag.d=d;return}
-      if(drag){const k=sc.vb[2]/box.clientWidth;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;if(moved){sc.vb[0]-=dx*k;sc.vb[1]-=dy*k;drag.x=e.clientX;drag.y=e.clientY;applyVB();box.classList.add('drag');card(null)}}
+      if(ptrs.size===2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(drag.d)zoomAt(drag.d/d,(a.clientX+b.clientX)/2,(a.clientY+b.clientY)/2,false);drag.d=d;return}
+      if(drag){const k=sc.vb[2]/box.clientWidth,dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
+        if(moved){sc.tvb=null;sc.vb[0]-=dx*k;sc.vb[1]-=dy*k;drag.x=e.clientX;drag.y=e.clientY;applyVB();box.classList.add('drag')}}
       return}
-    if(e.pointerType!=='mouse')return;
-    const sid=sidFromEvent(e);
-    if(sid){focusStation(sid);card(sid,e);hoverList(sc.marks[sid]?sid:null)}else if(!sc.pinned){focusStation(null);card(null);hoverList(null)}else{card(null)}
+    if(e.pointerType!=='mouse'||sc.pinned||e.target.closest('#sc-card'))return;
+    const hit=pickAt(e);
+    if(hit){clearTimeout(leaveT);if(hit.id!==sc.target||hit.st!==sc.from)setTarget(hit.id,hit.st)}
+    else if(sc.target){clearTimeout(leaveT);leaveT=setTimeout(()=>{if(!sc.pinned)setTarget(null)},260)}
   });
-  box.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,e);box.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};moved=false});
-  const up=e=>{ptrs.delete(e.pointerId);box.classList.remove('drag');
-    if(!moved&&ptrs.size===0){const sid=sidFromEvent(e);
-      if(sid&&BY_ID[sid])select(sid,false);
-      else if(sid){sc.pinned=sid;sc.focusId=null;focusStation(sid);card(sid,e)}
-      else{sc.pinned=null;if(state.sel)select(null);else{focusStation(null);card(null)}}}
+  box.addEventListener('pointerdown',e=>{if(e.target.closest('#sc-card'))return;ptrs.set(e.pointerId,e);box.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};moved=false});
+  const up=e=>{if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);box.classList.remove('drag');
+    if(!moved&&!ptrs.size){const hit=pickAt(e);
+      if(hit&&hit.st.id===hit.id)select(hit.id,false);
+      else if(hit){sc.pinned=hit.id;setTarget(hit.id,hit.st)}
+      else{sc.pinned=null;if(state.sel)select(null);else setTarget(null)}}
     if(!ptrs.size)drag=null};
   box.addEventListener('pointerup',up);box.addEventListener('pointercancel',up);
-  box.addEventListener('pointerleave',()=>{if(!sc.pinned&&!state.sel){focusStation(null);card(null)}});
-  box.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(e.deltaY*(e.ctrlKey?.01:.0018)),e.clientX,e.clientY);card(null)},{passive:false});
+  box.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!sc.pinned){clearTimeout(leaveT);leaveT=setTimeout(()=>setTarget(null),260)}});
+  box.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(e.deltaY*(e.ctrlKey?.012:.0022)),e.clientX,e.clientY,true)},{passive:false});
   $$('#sc-zoom button').forEach(b=>b.onclick=()=>{const z=+b.dataset.z;if(!z)return fitScheme(true);const r=box.getBoundingClientRect();zoomAt(1/z,r.left+r.width/2,r.top+r.height/2,true)});
 }
-function applyVB(){sc.svg.setAttribute('viewBox',sc.vb.map(v=>v.toFixed(1)).join(' '))}
 function zoomAt(f,cx,cy,anim){
-  const r=$('#scheme').getBoundingClientRect(),[x,y,w,h]=sc.vb;
-  const nw=Math.min(Math.max(w*f,140),W0*1.6),k=nw/w;
+  const r=$('#scheme').getBoundingClientRect(),base=sc.tvb||sc.vb,[x,y,w,h]=base;
+  const nw=Math.min(Math.max(w*f,320),W0*1.3),k=nw/w;
   const px=x+(cx-r.left)/r.width*w,py=y+(cy-r.top)/r.height*h;
-  animVB([px-(px-x)*k,py-(py-y)*k,nw,h*k],anim?220:0);
+  const to=[px-(px-x)*k,py-(py-y)*k,nw,h*k];
+  if(anim)sc.tvb=to;else{sc.tvb=null;sc.vb=to;applyVB()}
 }
 function fitScheme(anim){const r=$('#scheme').getBoundingClientRect(),a=r.width/r.height;
-  let w=W0,h=H0;if(w/h<a)w=h*a;else h=w/a;animVB([(W0-w)/2,(H0-h)/2,w,h],anim?300:0)}
-function animVB(to,ms){
-  if(!ms){sc.vb=to;applyVB();return}
-  const from=[...sc.vb],t0=performance.now();
-  const step=t=>{const k=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-k,3);sc.vb=from.map((v,i)=>v+(to[i]-v)*e);applyVB();if(k<1)requestAnimationFrame(step)};
-  requestAnimationFrame(step);
-}
+  let w=W0,h=H0;if(w/h<a)w=h*a;else h=w/a;const to=[VB0[0]+(W0-w)/2,VB0[1]+(H0-h)/2,w,h];
+  if(anim)sc.tvb=to;else{sc.vb=to;applyVB()}}
 function schemeSelect(p,fly){
   if(!sc.ready)return;
-  const ring=$('#ring');
-  if(!p){ring.setAttribute('r',0);sc.pinned=null;focusStation(null);card(null);return}
-  const sid=p.type==='st'?p.id:(p.raw.nb.find(n=>SC.pos[n.s])||{}).s;
-  if(!sid||!SC.pos[sid]){ring.setAttribute('r',0);return}
-  const[x,y]=SC.pos[sid];ring.setAttribute('cx',x);ring.setAttribute('cy',y);ring.setAttribute('r',13);
-  sc.pinned=sid;sc.focusId=null;focusStation(sid);
-  if(fly){const r=$('#scheme').getBoundingClientRect(),w=Math.min(sc.vb[2],520),h=w*r.height/r.width;animVB([x-w/2,y-h/2,w,h],350)}
+  if(!p){sc.pinned=null;setTarget(null);return}
+  const sid=p.type==='st'?p.id:(p.raw.nb.find(n=>SC.pos[n.s]&&MEET.has(n.s))||p.raw.nb.find(n=>SC.pos[n.s])||{}).s;
+  if(!sid||!SC.pos[sid])return;
+  const id=MEET.has(sid)?sid:nearestMeet(...SC.pos[sid],SEEK_R);
+  sc.pinned=id||null;if(id)setTarget(id,SC.st.find(s=>s.id===sid));
+  if(fly){const[x,y]=SC.pos[sid],r=$('#scheme').getBoundingClientRect(),w=Math.min(sc.vb[2],1100),h=w*r.height/r.width;sc.tvb=[x-w/2,y-h/2,w,h]}
 }
+function focusStation(sid){ /* list hover -> spotlight */
+  if(!sc.ready||sc.pinned)return;
+  if(!sid)return setTarget(null);
+  if(MEET.has(sid))setTarget(sid,null);
+}
+function card(){}
 
 /* ---------- view switching ---------- */
 let view='scheme';
 function setView(v){
   view=v;$('#app').classList.toggle('is-scheme',v==='scheme');$('#app').classList.toggle('is-map',v==='map');
   $('#v-scheme').setAttribute('aria-selected',v==='scheme');$('#v-map').setAttribute('aria-selected',v==='map');
-  $('#scheme').hidden=v!=='scheme';$('#sc-zoom').hidden=v!=='scheme';$('#map').style.visibility=v==='map'?'visible':'hidden';card(null);
-  if(v==='scheme')loadScheme();
+  $('#scheme').hidden=v!=='scheme';$('#sc-zoom').hidden=v!=='scheme';$('#map').style.visibility=v==='map'?'visible':'hidden';
+  if(v==='scheme'){loadScheme();requestAnimationFrame(()=>{applyVB();placeCard()})}
   if(v==='map'){if(!map&&window.maplibregl)initMap();else if(map){map.resize();highlight(state.sel&&BY_ID[state.sel],true)}}
 }
 $('#v-scheme').onclick=()=>setView('scheme');$('#v-map').onclick=()=>setView('map');
