@@ -759,7 +759,9 @@ button{cursor:pointer}
 .ico.of{width:20px;height:20px;margin:4px;border-radius:5px;background:#151717;display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .ico.of i{width:7px;height:7px;border-radius:50%;background:#f5ce00}
 .ico.ad{background:var(--bg);color:var(--ink-2)}
-.item span.s{flex-wrap:nowrap;min-width:0}
+.item span.s{flex-wrap:nowrap;min-width:0;align-items:center;min-height:22px;line-height:22px}
+.item .s .chips{align-items:center;margin-top:0}
+.item .s .kp{line-height:22px}
 .item .s .ln{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
 .item .s .ln>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .item .s .flabel{font-size:11.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 6px}
@@ -1182,17 +1184,17 @@ function updateCity(v){
   cityCluster.clearLayers();cityMarkers={};
   const ms=v.map(p=>{const m=L.marker([p.lat,p.lon],{icon:cityPin(p),title:p.name,keyboard:false});
     m.bindTooltip(esc(p.name),{direction:'top'});
-    m.on('click',()=>select(p.id,false));m.on('mouseover',()=>hoverList(p.id));m.on('mouseout',()=>hoverList(null));
+    m.on('click',()=>select(p.id,cityMap.getZoom()<15));m.on('mouseover',()=>hoverList(p.id));m.on('mouseout',()=>hoverList(null));
     cityMarkers[p.id]=m;return m});
-  cityCluster.addLayers(ms);
-  if(ms.length&&(state.q||firstFit)){cityMap.fitBounds(L.latLngBounds(v.map(p=>[p.lat,p.lon])),{padding:[30,30],maxZoom:15,animate:!firstFit});firstFit=false}
+  if(ms.length&&(state.q||firstFit)){cityMap.fitBounds(L.latLngBounds(v.map(p=>[p.lat,p.lon])),{padding:[30,30],maxZoom:15,animate:false});firstFit=false}
+  cityCluster.addLayers(ms.splice(0,ms.length>40?ms.length:0));ms.forEach(m=>cityCluster.addLayer(m));
 }
 function highlightCity(p,fly){
   if(!cityMap)return;
   cityLinks.clearLayers();if(!p)return;
   const others=p.type==='ad'?p.raw.nb.map(n=>stationInfo(n.s)).filter(Boolean):(AD_BY_ST[p.sid||p.id]||[]).map(a=>a.p);
   others.forEach(o=>L.polyline([[p.lat,p.lon],[o.lat,o.lon]],{color:'#151717',weight:2,opacity:.7,dashArray:'2 6',interactive:false}).addTo(cityLinks));
-  if(fly){const m=cityMarkers[p.id];if(m)reveal(cityMap,cityCluster,m,16,()=>m.openTooltip())}
+  if(fly){const m=cityMarkers[p.id];if(m)reveal(cityMap,cityCluster,m,15,()=>m.openTooltip())}
 }
 function hover(id){ /* list -> map */
   if(view==='scheme'&&sc.ready&&!sc.pinned)setTarget(id&&SM_MARK[id]?id:null);
@@ -1261,13 +1263,13 @@ function updateScheme(v){
     const m=L.circleMarker(toLL(s.x,s.y),ringStyle(p));
     m.on('mouseover',()=>{clearTimeout(leaveT);if(!sc.pinned)setTarget(p.id)});
     m.on('mouseout',()=>{clearTimeout(leaveT);if(!sc.pinned)leaveT=setTimeout(()=>setTarget(null),180)});
-    m.on('click',e=>{L.DomEvent.stopPropagation(e);select(p.id,false)});
+    m.on('click',e=>{L.DomEvent.stopPropagation(e);select(p.id,sm.getZoom()<-.5)});
     SM_MARK[p.id]=m;ms.push(m)}
-  smCluster.addLayers(ms);
+  if(state.q&&ms.length)sm.fitBounds(L.latLngBounds(ms.map(m=>m.getLatLng())),{padding:[70,70],maxZoom:-.5,animate:false});if(sm.getZoom()<-1.25)sm.setZoom(-1.25,{animate:false});
+  smCluster.addLayers(ms.splice(0,ms.length>40?ms.length:0));ms.forEach(m=>smCluster.addLayer(m)); /* addLayers drops small sets */
   const on=new Set(Object.keys(SM_MARK).map(id=>(BY_ID[id].sid||id)));
   sc.labels.forEach(l=>l.el.classList.toggle('meet',!!l.id&&on.has(l.id)));
   if(sc.target&&!SM_MARK[sc.target])setTarget(null,true);
-  if(state.q&&ms.length)sm.fitBounds(L.latLngBounds(ms.map(m=>m.getLatLng())),{padding:[70,70],maxZoom:0});
 }
 
 /* hover a place: after a short delay its line lights up, the rest fades, then the card appears */
@@ -1310,8 +1312,9 @@ function placeCard(){
   const pt=sm.latLngToContainerPoint(toLL(s.x,s.y)),r=$('#scheme').getBoundingClientRect();
   const w=box.offsetWidth,h=box.offsetHeight;
   const gap=ringSize().r+12;
-  let left=Math.min(Math.max(pt.x-30,12),r.width-w-12),top=pt.y+gap,below=false;
-  if(top+h>r.height-12){top=pt.y-h-gap;below=true}
+  const TOP=60,RIGHT=r.width<600?64:12;let left=Math.min(Math.max(pt.x-30,12),r.width-w-RIGHT),top=pt.y+gap,below=false;
+  if(top+h>r.height-12&&pt.y-h-gap>=TOP){top=pt.y-h-gap;below=true}
+  if(top+h>r.height-12)top=Math.max(TOP,r.height-h-12);
   box.classList.toggle('below',below);box.style.left=left+'px';box.style.top=top+'px';box.style.setProperty('--ax',Math.min(Math.max(pt.x-left-6,14),w-26)+'px');
 }
 function schemeSelect(p,fly){
@@ -1319,11 +1322,11 @@ function schemeSelect(p,fly){
   if(!p){sc.pinned=null;setTarget(null,true);return}
   if(p.type==='ad'){ /* address: centre on its nearest station */
     const n=p.raw.nb[0],s=n&&SC.st.find(x=>x.id===n.s);sc.pinned=null;setTarget(null,true);
-    if(fly&&s)sm.setView(toLL(s.x,s.y),Math.max(sm.getZoom(),.5),{animate:true});
+    if(fly&&s)sm.setView(toLL(s.x,s.y),Math.max(sm.getZoom(),-.5),{animate:true});
     if(n&&SM_MARK[n.s]){sc.pinned=n.s;setTarget(n.s,true)}return}
   const id=p.id;if(!SM_MARK[id])return;
   sc.pinned=id;setTarget(id,true);
-  if(fly)reveal(sm,smCluster,SM_MARK[id],.5,placeCard);
+  if(fly)reveal(sm,smCluster,SM_MARK[id],-.5,placeCard);
 }
 function highlight(p,fly){highlightCity(p,fly)}
 
