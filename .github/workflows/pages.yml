@@ -1,0 +1,49 @@
+name: Publish map
+
+# The site is published only when a release is published (or by hand from the Actions tab).
+# Merging into main does not change the live site by itself.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or branch to publish (e.g. v1.0.0)"
+        required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}map/
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.ref }}
+
+      - name: Build site
+        env:
+          VERSION: ${{ github.event.release.tag_name || inputs.ref }}
+        run: |
+          mkdir -p _site/map
+          cp map/index.html map/metro-scheme.svg _site/map/
+          sed -i "s|<meta name=\"app-version\" content=\"dev\">|<meta name=\"app-version\" content=\"${VERSION}\">|" _site/map/index.html
+          grep -q "content=\"${VERSION}\"" _site/map/index.html
+          printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=map/"><a href="map/">Карта занятий</a>\n' > _site/index.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

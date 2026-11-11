@@ -55,3 +55,13 @@
 ## Пересборка
 
 `src/` — шаблон и скрипты. `ymrender.py <scheme.json> <resources.json> <out.svg>` рисует схему из ответа Яндекса, `build_ym.py` привязывает к ней станции. `build_data.py data.json > data.min.json` сжимает данные. `build_scheme.py <dir>` строит подписи и отчёт. `assemble.py <dir> <out>` собирает `index.html`.
+
+## Как выходят версии
+
+1. Каждая доработка — отдельная ветка и pull request в `main`. В PR — описание, ссылка на предпросмотр и скриншоты проверки.
+2. После проверки PR сливается в `main`. Сайт от этого не меняется.
+3. Выкатка: Releases → «Draft a new release» → тег вида `v1.1.0` → «Generate release notes» → «Publish release».
+   Action `.github/workflows/pages.yml` собирает сайт из этого тега и публикует его; номер версии появляется в подвале.
+4. Откат: Actions → «Publish map» → «Run workflow» → указать прошлый тег, например `v1.0.0`.
+
+Записи об изменениях — в `CHANGELOG.md`.

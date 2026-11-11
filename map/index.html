@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Где проходят занятия — автошкола «Колесо»</title>
+<meta name="app-version" content="dev">
 <meta name="description" content="Места встречи с инструктором в Москве и области: у метро и по адресу. Поиск, фильтры, время пешком от станции.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
@@ -1346,7 +1347,8 @@ $('#v-scheme').onclick=()=>setView('scheme');$('#v-map').onclick=()=>setView('ma
 const nst=PLACES.filter(p=>p.type==='st').length,nad=PLACES.filter(p=>p.type==='ad').length;
 
 $('#stats').innerHTML=`<div class="stat"><b>${PLACES.length}</b><span>мест встречи</span></div><div class="stat"><b>${nst}</b><span>у метро и МЦД</span></div><div class="stat"><b>${nad}</b><span>по адресу</span></div>`;
-$('#foot').textContent=`Данные обновлены ${D.date}. Карта © OpenStreetMap, OpenFreeMap.`;
+const APP_VERSION=(document.querySelector('meta[name=app-version]')||{}).content||'dev';
+$('#foot').textContent=`Версия ${APP_VERSION} · данные от ${D.date}. Карта © OpenStreetMap, OpenFreeMap.`;
 let t;$('#q').oninput=e=>{state.q=e.target.value;$('#searchbox').classList.toggle('has-value',!!state.q);clearTimeout(t);t=setTimeout(()=>{if(state.sel)select(null);renderList()},120)};
 $('#clear').onclick=()=>{$('#q').value='';$('#q').dispatchEvent(new Event('input'));$('#q').focus()};
 $$('.seg [data-type]').forEach(b=>b.onclick=()=>{state.type=b.dataset.type;$$('.seg [data-type]').forEach(x=>x.setAttribute('aria-pressed',x===b));select(null);renderList()});
