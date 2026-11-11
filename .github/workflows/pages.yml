@@ -37,6 +37,9 @@ jobs:
         run: |
           mkdir -p _site/map
           cp map/index.html map/metro-scheme.svg _site/map/
+          cp -r map/data _site/map/data
+          python3 -c "import json;json.load(open('_site/map/data/metro.json'))"
+          test -s _site/map/data/places.csv || python3 -c "import json;json.load(open('_site/map/data/places.json'))"
           sed -i "s|<meta name=\"app-version\" content=\"dev\">|<meta name=\"app-version\" content=\"${VERSION}\">|" _site/map/index.html
           grep -q "content=\"${VERSION}\"" _site/map/index.html
           printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=map/"><a href="map/">Карта занятий</a>\n' > _site/index.html

@@ -977,15 +977,113 @@ button{cursor:pointer}
   </section>
 </div>
 
-<script id="data" type="application/json">__DATA__</script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js" defer></script>
 <script>
-addEventListener('DOMContentLoaded',()=>{
-const D=JSON.parse(document.getElementById('data').textContent);
+const METRO_URL=window.KOLESO_METRO_URL||'data/metro.json';
+/* ---------- places data: CSV (main, human-editable) or JSON ----------
+   data/places.csv is used when present, otherwise data/places.json.
+   An embedding page may point to its own file: window.KOLESO_PLACES_URL='https://…/places.csv' (or .json).
+   CSV columns (header names are case-insensitive, any order):
+     тип        метро | адрес | точка | офис | мото (зал) | мото (улица)
+     название   station name (метро) or address text (адрес)
+     линия      line, only to pick one of stations with the same name
+     мкпп, акпп да / нет
+     встреча    да / нет — нет: station is shown only as the nearest one to an address
+     широта, долгота  for адрес/точка
+     станции    stations near an address: "Тульская 5 мин 392 м, Шаболовская (МЦК) 9 мин"
+     станция    for офис/мото: the station it belongs to
+     примечание office address; for адрес a note shown only in ?admin=1 */
+const PLACES_URLS=window.KOLESO_PLACES_URL?[window.KOLESO_PLACES_URL]:['data/places.csv','data/places.json'];
+const loadJSON=async u=>{const r=await fetch(u,{cache:'no-cache'});if(!r.ok)throw Error(u+': '+r.status);return r.json()};
+async function loadPlaces(metro){
+  for(const u of PLACES_URLS){
+    let r;try{r=await fetch(u,{cache:'no-cache'})}catch(e){continue}
+    if(!r.ok)continue;
+    const text=await r.text();
+    if(/\.json(\?|#|$)/i.test(u)||/^\s*\{/.test(text))return JSON.parse(text);
+    return csvToPlaces(text,metro,r.headers.get('last-modified'));
+  }
+  throw Error('нет файла с местами: '+PLACES_URLS.join(', '));
+}
+function parseCSV(text){
+  text=text.replace(/^﻿/,'');
+  const first=text.split(/\r?\n/,1)[0],delim=[';','\t',','].map(d=>[d,first.split(d).length]).sort((a,b)=>b[1]-a[1])[0][0];
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=c;continue}
+    if(c==='"')q=true;else if(c===delim){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x.trim()))rows.push(row);row=[]}
+    else f+=c}
+  row.push(f);if(row.some(x=>x.trim()))rows.push(row);
+  const head=rows.shift().map(h=>h.trim().toLowerCase().replaceAll('ё','е').replace(/[\s_]+/g,' '));
+  return rows.map(r=>Object.fromEntries(head.map((h,i)=>[h,(r[i]||'').trim()])));
+}
+function csvToPlaces(text,metro,modified){
+  const nm=s=>String(s||'').toLowerCase().replaceAll('ё','е').replace(/[\s\-—–.«»"]/g,'');
+  const yes=v=>/^(да|д|yes|y|\+|1|x|х|true)$/i.test(String(v).trim());
+  const num=v=>{const n=parseFloat(String(v).replace(',','.'));return Number.isFinite(n)?n:null};
+  const lineOf={};metro.lines.forEach(l=>l.st.forEach(id=>(lineOf[id]=lineOf[id]||[]).push(l)));
+  const byName={};for(const[id,s]of Object.entries(metro.allst))(byName[nm(s.n)]=byName[nm(s.n)]||[]).push(id);
+  const KIND_RANK={'Метро':0,'МЦК':1,'МЦД':2};
+  /* station by name, optional line; without a line: metro first, then МЦК, МЦД */
+  const findStation=(name,line)=>{
+    let ids=byName[nm(name)]||[];
+    if(line){const L=nm(line);ids=ids.filter(id=>(lineOf[id]||[]).some(l=>nm(l.n)===L||nm(l.n).startsWith(L)||nm(l.n).replace('линия','')===L))}
+    return ids.sort((a,b)=>(KIND_RANK[(lineOf[a]||[{}])[0].k]??3)-(KIND_RANK[(lineOf[b]||[{}])[0].k]??3))[0]||null};
+  /* lines of the whole interchange: same name, same kind (метро / МЦК / МЦД), within ~1 km */
+  const hubLines=id=>{const s=metro.allst[id],kind=(lineOf[id]||[{}])[0].k,out=[];
+    for(const j of byName[nm(s.n)]||[]){const o=metro.allst[j];if(Math.hypot((o.lat-s.lat)*111,(o.lon-s.lon)*63)>1)continue;
+      for(const l of lineOf[j]||[])if(l.k===kind&&!out.includes(l.n))out.push(l.n)}return out};
+  const stRec=(id,m,kpp)=>{const s=metro.allst[id],L=lineOf[id]||[];return{id,n:s.n,lat:s.lat,lon:s.lon,k:(L[0]||{}).k||'Метро',l:hubLines(id),m,kpp}};
+  const out={date:'',stations:[],points:[],svc:[],issues:[],warnings:[]};
+  const seen={};const warn=(i,msg)=>out.warnings.push(`строка ${i+2}: ${msg}`);
+  const rows=parseCSV(text);
+  rows.forEach((r,i)=>{
+    const type=nm(r['тип']||r['type']);
+    if(!type)return;
+    if(type==='метро'||type==='станция'||type==='мцк'||type==='мцд'){
+      const id=findStation(r['название'],r['линия']);if(!id)return warn(i,`станция «${r['название']}» не найдена`);
+      const kpp=[];if(yes(r['мкпп']))kpp.push('mt');if(yes(r['акпп']))kpp.push('at');
+      const meet=r['встреча']===undefined||r['встреча']===''||yes(r['встреча']);
+      if(seen[id]){Object.assign(seen[id],{m:Math.max(seen[id].m,meet?1:0)});kpp.forEach(k=>seen[id].kpp.includes(k)||seen[id].kpp.push(k));return}
+      out.stations.push(seen[id]=stRec(id,meet?1:0,kpp));return;
+    }
+    if(type==='адрес'||type==='точка'){
+      const lat=num(r['широта']),lon=num(r['долгота']);if(lat===null||lon===null)return warn(i,`у «${r['название']}» нет координат`);
+      const nb=[];
+      for(const part of String(r['станции']||'').split(/[,\n]/).map(s=>s.trim()).filter(Boolean)){
+        const m=part.match(/^(.+?)(?:\s*\(([^)]+)\))?\s+(\d+)\s*мин\.?(?:\s+(\d+)\s*м\.?)?$/i);
+        if(!m){warn(i,`не понял станцию «${part}»`);continue}
+        const id=findStation(m[1],m[2]);if(!id){warn(i,`станция «${m[1]}» не найдена`);continue}
+        nb.push({s:id,t:+m[3],d:m[4]?+m[4]:Math.round(+m[3]*83)});
+      }
+      nb.sort((a,b)=>a.t-b.t);
+      out.points.push({id:'a'+(out.points.length+1),n:r['название'],pin:type==='точка'?1:0,lat,lon,nb,c:r['примечание']||''});
+      for(const n of nb)if(!seen[n.s])out.stations.push(seen[n.s]=stRec(n.s,0,[]));
+      return;
+    }
+    if(type==='офис'||type.startsWith('мото')){
+      const id=findStation(r['станция']||r['название'],r['линия']);if(!id)return warn(i,`станция «${r['станция']||r['название']}» не найдена`);
+      const s=metro.allst[id],k=type==='офис'?'office':/зал|помещ/.test(type)?'moto_indoor':'moto_outdoor';
+      out.svc.push({id:'svc'+(out.svc.length+1),k,n:s.n,sid:id,note:type==='офис'?'Офис автошколы «Колесо»\n'+(r['примечание']||''):(r['примечание']||''),lat:s.lat,lon:s.lon});
+      return;
+    }
+    warn(i,`неизвестный тип «${r['тип']}»`);
+  });
+  const d=modified?new Date(modified):new Date();out.date=d.toLocaleDateString('ru-RU');
+  if(out.warnings.length)console.warn('places.csv:',out.warnings);
+  return out;
+}
+
+addEventListener('DOMContentLoaded',async()=>{
+let D;
+try{const me=await loadJSON(METRO_URL);const pl=await loadPlaces(me);D={...me,...pl}}
+catch(e){console.error(e);document.getElementById('list').innerHTML='<div class="empty"><b>Не удалось загрузить места занятий</b>Обновите страницу. Если не помогло — данные временно недоступны.</div>';return}
 const ADMIN=new URLSearchParams(location.search).has('admin');
+if(ADMIN&&D.warnings&&D.warnings.length){const w=document.createElement('div');w.className='warnbox';w.style.margin='8px 20px';w.textContent='Данные: '+D.warnings.length+' замечаний — '+D.warnings.join('; ');document.querySelector('.controls').after(w)}
 const LOGO='<circle cx="32" cy="32" r="32" fill="#151717"/><circle cx="32" cy="32" r="20.5" fill="none" stroke="#f5ce00" stroke-width="5.6"/><path d="M28.6 23.5v17c0 2 2.5 3 3.9 1.6l8.4-8.4c.9-.9.9-2.4 0-3.3l-8.4-8.5c-1.4-1.4-3.9-.4-3.9 1.6z" fill="#fff"/>';
 document.getElementById('logo').innerHTML=LOGO;
 
@@ -1007,8 +1105,6 @@ const AD_BY_ST={};D.points.forEach(p=>p.nb.forEach(n=>(AD_BY_ST[n.s]=AD_BY_ST[n.
 
 const PLACES=[
   ...D.stations.map(s=>({id:s.id,type:'st',name:s.n,lat:s.lat,lon:s.lon,kind:s.k,lines:s.l,kpp:s.kpp,raw:s})),
-  ...['Долгопрудная','Достоевская'].map(n=>{const id=Object.keys(D.allst).find(k=>D.allst[k].n===n);if(!id||D.stations.some(s=>s.id===id))return null;const a=D.allst[id];
-    const L=D.lines.filter(l=>l.st.includes(id));return{id,type:'st',name:a.n,lat:a.lat,lon:a.lon,kind:(L[0]||{}).k||'Метро',lines:L.map(l=>l.n),kpp:['mt'],raw:{m:1,legacy:1}}}).filter(Boolean),
   ...D.points.map(p=>({id:p.id,type:'ad',name:p.n,lat:p.lat,lon:p.lon,kind:'Адрес',lines:[],kpp:[],raw:p})),
   ...D.svc.filter(s=>s.sid).map(s=>{const st=D.allst[s.sid]||{};const L=D.lines.filter(l=>l.st.includes(s.sid)).map(l=>l.n);
     return{id:s.id,type:s.k==='office'?'of':'mo',sub:s.k,name:s.k==='office'?'Офис «Колесо» · '+s.n:'Мотоплощадка · '+s.n,station:s.n,sid:s.sid,lat:s.lat,lon:s.lon,kind:s.k==='office'?'Офис':'Мото',lines:L,kpp:[],note:s.note,raw:s}})
