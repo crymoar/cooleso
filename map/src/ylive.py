@@ -34,6 +34,7 @@ while True:
     res+=b0[cur:t.end()]; cur=t.end()
 res+=b0[dec_end:]
 res=re.sub(r'<circle[^>]*\br="16"[^>]*>(</circle>)?','',res)
+res=re.sub(r'<path[^>]*stroke="#979797"[^>]*stroke-dasharray[^>]*>(</path>)?','',res)  # grey dotted walking transfers
 css='<style>text{font-family:"Inter Tight",Arial,Helvetica,sans-serif}.scheme-objects-view__label circle{visibility:hidden;opacity:0}</style>'
 svg=f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3000 3500">{css}<g id="objects">{res}</g><g id="labels">{b1}</g></svg>'
 open(OUT,'w').write(svg); print(len(svg), 'nested svgs left:', svg.count('<svg')-1)
