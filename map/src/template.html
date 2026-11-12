@@ -1184,7 +1184,7 @@ function matches(p,skip){
   if(q&&!p.search.includes(q))return false;
   return true;
 }
-function visible(){return PLACES.filter(p=>matches(p)).sort((a,b)=>a.name.localeCompare(b.name,'ru'))}
+function visible(){return PLACES.filter(p=>matches(p)).sort((a,b)=>(a.type==='mo'?a.station:a.name).localeCompare(b.type==='mo'?b.station:b.name,'ru'))}
 function updateCounts(){
   const base=PLACES.filter(p=>matches(p,'type'));
   const n={all:base.length,metro:base.filter(p=>p.metro).length,addr:base.filter(p=>p.ads&&p.ads.length).length};
@@ -1217,7 +1217,7 @@ function sub(p){
   if(p.type==='st'){const a=p.ads[0];if(!a)return '';
     return `<span>${HOUSE}${esc(shortAddr(a.p.n))}</span><span class="tag walk">${walkTxt(a)}</span>${p.ads.length>1?`<span>+ ещё ${p.ads.length-1}</span>`:''}${ADMIN&&p.ads.some(x=>x.p.c)?'<span class="tag warn">уточнить</span>':''}`}
   if(p.type==='of')return `<span>${dots(p.lines)} м. ${esc(p.station)}${p.addr?' · '+esc(p.addr):''}</span>`;
-  if(p.type==='mo')return `<span class="tag mo">${motoText(p)}</span><span>${dots(p.lines)} м. ${esc(p.station)}</span>`;
+  if(p.type==='mo')return p.addr?`<span>${HOUSE}${esc(p.addr)}</span>`:'';
   const n=p.near;let s=n?`<span class="tag walk">${n.t} мин пешком</span><span>${dots(n.st.l||[])} м. ${esc(n.st.n)}</span>`:'<span>Рядом нет станций в расчёте</span>';
   if(ADMIN&&p.raw.c)s+='<span class="tag warn">уточнить</span>';
   return s;
@@ -1227,7 +1227,7 @@ function renderList(){
   const v=visible();
   const nst=v.filter(p=>p.type==='st').length,nad=v.length-nst;
   $('#list').innerHTML=v.length
-    ?`<div class="count">${plural(v.length,'место','места','мест')}${state.q?' по запросу':''}</div>`+v.map(p=>{const s=sub(p);return `<button class="item${state.sel===p.id?' active':''}${s?'':' one'}" role="listitem" data-id="${p.id}">${icon(p)}<span class="body"><span class="trow"><span class="t">${esc(p.name)}</span>${p.type==='st'?`<span class="chips">${kppTags(p)}</span>`:''}</span>${s?`<span class="s">${s}</span>`:''}</span></button>`}).join('')
+    ?`<div class="count">${plural(v.length,'место','места','мест')}${state.q?' по запросу':''}</div>`+v.map(p=>{const s=sub(p);return `<button class="item${state.sel===p.id?' active':''}${s?'':' one'}" role="listitem" data-id="${p.id}">${icon(p)}<span class="body"><span class="trow"><span class="t">${esc(p.type==='mo'?p.station:p.name)}</span>${p.type==='st'?`<span class="chips">${kppTags(p)}</span>`:p.type==='mo'?`<span class="chips"><span class="tag mo">${motoText(p)}</span></span>`:''}</span>${s?`<span class="s">${s}</span>`:''}</span></button>`}).join('')
     :`<div class="empty"><b>Ничего не нашли</b>Попробуйте название станции или улицы${state.kpp!=='any'?', или снимите фильтр по коробке':''}.</div>`;
   $$('#list .item').forEach(b=>{
     b.onclick=()=>select(b.dataset.id,true);
