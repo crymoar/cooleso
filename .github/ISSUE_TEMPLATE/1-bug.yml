@@ -1,0 +1,34 @@
+name: Ошибка
+description: Работает не так, как задумано. Версия — третий разряд (1.2.x).
+title: "Ошибка: "
+labels: ["ошибка"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Что не так
+      description: Что видите и где (схема, карта города, список, телефон).
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Как должно быть
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить
+      placeholder: "1. Открыть карту на телефоне\n2. Нажать на точку …"
+  - type: dropdown
+    id: device
+    attributes:
+      label: Где
+      multiple: true
+      options: [Компьютер, Телефон, Планшет]
+  - type: textarea
+    id: shots
+    attributes:
+      label: Скриншоты
+      description: Перетащите картинку сюда.

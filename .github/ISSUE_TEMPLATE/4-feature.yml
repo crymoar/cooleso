@@ -1,0 +1,22 @@
+name: Новая функция
+description: Возможность, которой на карте ещё нет. Версия — второй разряд (1.x.0).
+title: "Функция: "
+labels: ["функция"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Что нужно
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Зачем
+      description: Кому и в какой ситуации это поможет.
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Примеры, макеты
