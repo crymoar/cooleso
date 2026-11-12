@@ -1,0 +1,21 @@
+name: Доработка
+description: Улучшить то, что уже есть (вид, удобство, поведение). Версия — третий разряд (1.2.x).
+title: "Доработка: "
+labels: ["доработка"]
+body:
+  - type: textarea
+    id: now
+    attributes:
+      label: Как сейчас
+    validations:
+      required: true
+  - type: textarea
+    id: want
+    attributes:
+      label: Как сделать
+    validations:
+      required: true
+  - type: textarea
+    id: shots
+    attributes:
+      label: Скриншоты
