@@ -1,0 +1,12 @@
+{
+  "name": "cooleso-map-tests",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:desktop": "playwright test --project=desktop",
+    "test:mobile": "playwright test --project=mobile"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}
