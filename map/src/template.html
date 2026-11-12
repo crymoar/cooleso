@@ -1164,7 +1164,7 @@ const PLACES=[
 PLACES.forEach(p=>{
   p.ads=p.type==='st'?(AD_BY_ST[p.id]||[]).slice().sort((a,b)=>a.t-b.t):[];
   p.metro=p.type==='st'&&p.raw.m!==0;
-  p.search=fold([p.name,...p.lines,p.kind,...p.ads.map(a=>a.p.n+' '+shortAddr(a.p.n))].join(' '));
+  p.search=fold([p.name,p.type==='st'?'':p.addr||'',...p.lines,p.kind,...p.ads.map(a=>a.p.n+' '+shortAddr(a.p.n))].join(' '));
 });
 const BY_ID=Object.fromEntries(PLACES.map(p=>[p.id,p]));
 const MOTO_SEASON={moto_summer:'Летняя площадка',moto_winter:'Зимняя площадка',moto_allyear:'Круглый год',moto_indoor:'В помещении',moto_outdoor:'На улице'};
