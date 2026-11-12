@@ -951,6 +951,8 @@ button{cursor:pointer}
   .detail .back{position:sticky;top:max(46dvh,300px);z-index:5;background:var(--surface);width:calc(100% + 32px);margin:0 -16px;padding:10px 16px;border-radius:0;border-bottom:1px solid var(--line);height:auto}
   .sc-card{display:none!important}
 }
+.adr-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8a4fe0;border:2px solid #fff;box-shadow:0 0 0 1px #c9cdd1;vertical-align:-1px}
+.leaflet-tooltip.adr-tip{font:600 12px/1.2 'Inter Tight',system-ui,sans-serif;padding:3px 7px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 </style>
 </head>
 <body>
@@ -972,9 +974,8 @@ button{cursor:pointer}
       <div class="flabel">Где встреча</div>
       <div class="seg" role="group" aria-label="Где встреча">
         <button data-type="all" aria-pressed="true">Все<span class="n" id="n-all"></span></button>
-        <button data-type="st" aria-pressed="false">Метро<span class="n" id="n-st"></span></button>
-        <button data-type="ad" aria-pressed="false">Адрес<span class="n" id="n-ad"></span></button>
-        <button data-type="of" aria-pressed="false">Офис<span class="n" id="n-of"></span></button>
+        <button data-type="metro" aria-pressed="false">У метро<span class="n" id="n-metro"></span></button>
+        <button data-type="addr" aria-pressed="false">По адресу<span class="n" id="n-addr"></span></button>
       </div>
       <div class="flabel">Коробка</div>
       <div class="seg seg-s" role="group" aria-label="Коробка передач">
@@ -997,7 +998,7 @@ button{cursor:pointer}
     <div class="views" role="tablist" aria-label="Вид"><button role="tab" id="v-scheme" aria-selected="true">Схема метро</button><button role="tab" id="v-map" aria-selected="false">Карта города</button></div>
     <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="false">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
-    <div class="legend" aria-hidden="true"><span class="lg-sc"><i class="ld" style="background:#f29900"></i>МКПП</span><span class="lg-sc"><i class="ld" style="background:#1f6fe5"></i>АКПП</span><span class="lg-sc"><i class="ld" style="background:#8a4fe0"></i>МКПП и АКПП</span><span class="lg-sc"><i class="ld" style="background:#e5484d"></i>мото</span><span class="lg-sc"><i class="ld" style="background:#151717"></i>офис</span><span class="lg-only-map brand-legend"><i class="lg-logo"></i>Локации «Колесо»</span><span class="lg-only-map" style="color:var(--muted)">• адрес · М метро · Ц МЦК · Д МЦД · О офис</span></div>
+    <div class="legend" aria-hidden="true"><span class="lg-sc"><i class="ld" style="background:#f29900"></i>МКПП</span><span class="lg-sc"><i class="ld" style="background:#1f6fe5"></i>АКПП</span><span class="lg-sc"><i class="ld" style="background:#8a4fe0"></i>МКПП и АКПП</span><span class="lg-sc"><i class="ld" style="background:#e5484d"></i>мото</span><span class="lg-sc"><i class="ld" style="background:#151717"></i>офис</span><span class="lg-only-map brand-legend"><i class="lg-logo"></i>Локации «Колесо»</span><span class="lg-only-map" style="color:var(--muted)">М метро · Ц МЦК · Д МЦД · О офис · Мт мото · <i class="adr-dot"></i> адрес занятий</span></div>
     <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
   </section>
 </div>
@@ -1086,6 +1087,10 @@ function csvToPlaces(text,metro,modified){
         const id=findStation(m[1],m[2]);if(!id){warn(i,`станция «${m[1]}» не найдена`);continue}
         nb.push({s:id,t:+m[3],d:m[4]?+m[4]:Math.round(+m[3]*83)});
       }
+      /* no station within walking distance: attach to the nearest one in a straight line (≈1.25 × distance, 5 km/h) */
+      if(!nb.length){let best=null,bd=1e12;const cl=Math.cos(lat*Math.PI/180);
+        for(const[id,s]of Object.entries(metro.allst)){if(!lineOf[id])continue;const d=Math.hypot((s.lat-lat)*111320,(s.lon-lon)*111320*cl);if(d<bd){bd=d;best=id}}
+        if(best){const d=Math.round(bd*1.25);nb.push({s:best,t:Math.round(d/83),d,far:d>2500});warn(i,`у «${r['название']}» нет станций в пешей доступности — привязан к ближайшей, ${metro.allst[best].n} (${(d/1000).toFixed(1)} км)`)}}
       nb.sort((a,b)=>a.t-b.t);
       const kpp=[];if(yes(r['мкпп']))kpp.push('mt');if(yes(r['акпп']))kpp.push('at');
       if(!kpp.length)warn(i,`у «${r['название']}» не указана коробка`);
@@ -1142,17 +1147,24 @@ const short=n=>n.replace('Большая кольцевая линия','БКЛ'
 const ST={};D.stations.forEach(s=>ST[s.id]=s);
 const stationInfo=id=>(ST[id]&&ST[id].lon>36.5&&ST[id].lon!==ST[id].lat?ST[id]:null)||(D.allst[id]&&{id,...D.allst[id],n:D.allst[id].n,l:D.lines.filter(l=>l.st.includes(id)).map(l=>l.n),k:(D.lines.find(l=>l.st.includes(id))||{}).k||'Метро'});
 /* addresses within walking distance of each station */
-const AD_BY_ST={};D.points.forEach(p=>p.nb.forEach(n=>(AD_BY_ST[n.s]=AD_BY_ST[n.s]||[]).push({p,t:n.t,d:n.d})));
+/* "Таллинская улица, 20, корпус 3" -> "ул. Таллинская, 20к3" */
+const ADDR_ABBR={'проспект':'пр-т','бульвар':'б-р','шоссе':'ш.','проезд':'пр.','переулок':'пер.','площадь':'пл.','набережная':'наб.'};
+const shortAddr=a=>String(a).split(/,\s*/).map(s=>{const ul=/(^|\s)улица(\s|$)/i;if(ul.test(s))return ('ул. '+s.replace(ul,' ').trim()).replace(/\s+/g,' ');
+    for(const[w,ab]of Object.entries(ADDR_ABBR))s=s.replace(new RegExp('(^|\\s)'+w+'(?=\\s|$)','i'),'$1'+ab);return s})
+  .join(', ').replace(/, корпус\s*/g,'к').replace(/, строение\s*/g,'с');
+const AD_BY_ST={};D.points.forEach(p=>p.nb.forEach(n=>(AD_BY_ST[n.s]=AD_BY_ST[n.s]||[]).push({p,t:n.t,d:n.d,far:n.far})));
+const km=d=>(d/1000).toFixed(1).replace('.',',')+' км';
+const walkTxt=a=>a.far?km(a.d):a.t+' мин пешком';
 
 const PLACES=[
   ...D.stations.filter(s=>s.kpp&&s.kpp.length).map(s=>({id:s.id,type:'st',name:s.n,lat:s.lat,lon:s.lon,kind:s.k,lines:s.l,kpp:s.kpp,raw:s})),
-  ...D.points.map(p=>({id:p.id,type:'ad',name:p.n,lat:p.lat,lon:p.lon,kind:'Адрес',lines:[],kpp:p.kpp||[],raw:p})),
   ...D.svc.filter(s=>s.sid).map(s=>{const st=D.allst[s.sid]||{};const L=D.lines.filter(l=>l.st.includes(s.sid)).map(l=>l.n);
     return{id:s.id,type:s.k==='office'?'of':'mo',sub:s.k,name:s.k==='office'?'Офис «Колесо» · '+s.n:'Мотоплощадка · '+s.n,addr:s.k==='office'?(s.note||'').split('\n').slice(1).join(' '):(s.note||''),station:s.n,sid:s.sid,lat:s.lat,lon:s.lon,kind:s.k==='office'?'Офис':'Мото',lines:L,kpp:[],note:s.note,raw:s}})
 ];
 PLACES.forEach(p=>{
-  if(p.type==='ad'){const n=p.raw.nb[0];p.near=n?{...n,st:stationInfo(n.s)}:null}
-  p.search=fold([p.name,...p.lines,p.kind,p.near?.st?.n||'',...(p.raw.nb||[]).map(n=>stationInfo(n.s)?.n||'')].join(' '));
+  p.ads=p.type==='st'?(AD_BY_ST[p.id]||[]).slice().sort((a,b)=>a.t-b.t):[];
+  p.metro=p.type==='st'&&p.raw.m!==0;
+  p.search=fold([p.name,...p.lines,p.kind,...p.ads.map(a=>a.p.n+' '+shortAddr(a.p.n))].join(' '));
 });
 const BY_ID=Object.fromEntries(PLACES.map(p=>[p.id,p]));
 const MOTO_SEASON={moto_summer:'Летняя площадка',moto_winter:'Зимняя площадка',moto_allyear:'Круглый год',moto_indoor:'В помещении',moto_outdoor:'На улице'};
@@ -1164,21 +1176,22 @@ const state={q:'',type:'all',kpp:'any',mcd:true,sel:null,lines:false};
 /* filters: where (type), gearbox ('mt' also matches stations with both), МЦД/МЦК, search */
 function matches(p,skip){
   const q=fold(state.q.trim());
-  if(skip!=='type'&&state.type!=='all'&&p.type!==state.type)return false;
+  if(skip!=='type'&&state.type==='metro'&&!p.metro)return false;
+  if(skip!=='type'&&state.type==='addr'&&!(p.ads&&p.ads.length))return false;
   if(!state.mcd&&(p.type==='st')&&p.kind!=='Метро')return false;
   if(state.kpp==='moto'){if(p.type!=='mo')return false}
-  else if(state.kpp!=='any'&&!((p.type==='st'||p.type==='ad')&&p.kpp.includes(state.kpp)))return false;
+  else if(state.kpp!=='any'&&!(p.type==='st'&&p.kpp.includes(state.kpp)))return false;
   if(q&&!p.search.includes(q))return false;
   return true;
 }
 function visible(){return PLACES.filter(p=>matches(p)).sort((a,b)=>a.name.localeCompare(b.name,'ru'))}
 function updateCounts(){
   const base=PLACES.filter(p=>matches(p,'type'));
-  const n={all:base.length,st:base.filter(p=>p.type==='st').length,ad:base.filter(p=>p.type==='ad').length,of:base.filter(p=>p.type==='of').length};
+  const n={all:base.length,metro:base.filter(p=>p.metro).length,addr:base.filter(p=>p.ads&&p.ads.length).length};
   for(const k in n)$('#n-'+k).textContent=n[k];
   $$('.seg [data-type]').forEach(b=>b.disabled=b.dataset.type!=='all'&&!n[b.dataset.type]);
   const note=$('#fnote');
-  if(state.kpp==='mt'||state.kpp==='at'){note.hidden=false;note.textContent='Показаны станции и адреса, где есть '+(state.kpp==='mt'?'механика':'автомат')+'.'}
+  if(state.kpp==='mt'||state.kpp==='at'){note.hidden=false;note.textContent='Показаны станции, где есть '+(state.kpp==='mt'?'механика':'автомат')+'.'}
   else if(state.kpp==='moto'){note.hidden=false;note.textContent='Показаны мотоплощадки: летние, зимние и круглогодичные.'}
   else note.hidden=true;
 }
@@ -1199,9 +1212,10 @@ function icon(p){
 const dots=lines=>`<span class="dots">${lines.map(l=>`<i class="dot" style="--c:${lineColor(l)}" title="${esc(l)}"></i>`).join('')}</span>`;
 const SVC={mt:'#e7a329',at:'#228cda',office:'#247958',moto:'#168c91',none:'#4b4f54'};
 const svcOf=p=>p.type==='of'?'office':p.type==='mo'?'moto':p.kpp.length===2?'both':p.kpp[0]||'none';
-const kppTags=(p,long)=>p.type!=='st'&&p.type!=='ad'?'':p.kpp.map(k=>`<span class="kp ${k}">${k==='mt'?(long?'МКПП · механика':'МКПП'):(long?'АКПП · автомат':'АКПП')}</span>`).join('');
+const kppTags=(p,long)=>p.type!=='st'?'':p.kpp.map(k=>`<span class="kp ${k}">${k==='mt'?(long?'МКПП · механика':'МКПП'):(long?'АКПП · автомат':'АКПП')}</span>`).join('');
 function sub(p){
-  if(p.type==='st')return '';
+  if(p.type==='st'){const a=p.ads[0];if(!a)return '';
+    return `<span>${HOUSE}${esc(shortAddr(a.p.n))}</span><span class="tag walk">${walkTxt(a)}</span>${p.ads.length>1?`<span>+ ещё ${p.ads.length-1}</span>`:''}${ADMIN&&p.ads.some(x=>x.p.c)?'<span class="tag warn">уточнить</span>':''}`}
   if(p.type==='of')return `<span>${dots(p.lines)} м. ${esc(p.station)}${p.addr?' · '+esc(p.addr):''}</span>`;
   if(p.type==='mo')return `<span class="tag mo">${motoText(p)}</span><span>${dots(p.lines)} м. ${esc(p.station)}</span>`;
   const n=p.near;let s=n?`<span class="tag walk">${n.t} мин пешком</span><span>${dots(n.st.l||[])} м. ${esc(n.st.n)}</span>`:'<span>Рядом нет станций в расчёте</span>';
@@ -1213,7 +1227,7 @@ function renderList(){
   const v=visible();
   const nst=v.filter(p=>p.type==='st').length,nad=v.length-nst;
   $('#list').innerHTML=v.length
-    ?`<div class="count">${plural(v.length,'место','места','мест')}${state.q?' по запросу':''}</div>`+v.map(p=>{const s=sub(p);return `<button class="item${state.sel===p.id?' active':''}${s?'':' one'}" role="listitem" data-id="${p.id}">${icon(p)}<span class="body"><span class="trow"><span class="t">${esc(p.name)}</span>${p.type==='st'||p.type==='ad'?`<span class="chips">${kppTags(p)}</span>`:''}</span>${s?`<span class="s">${s}</span>`:''}</span></button>`}).join('')
+    ?`<div class="count">${plural(v.length,'место','места','мест')}${state.q?' по запросу':''}</div>`+v.map(p=>{const s=sub(p);return `<button class="item${state.sel===p.id?' active':''}${s?'':' one'}" role="listitem" data-id="${p.id}">${icon(p)}<span class="body"><span class="trow"><span class="t">${esc(p.name)}</span>${p.type==='st'?`<span class="chips">${kppTags(p)}</span>`:''}</span>${s?`<span class="s">${s}</span>`:''}</span></button>`}).join('')
     :`<div class="empty"><b>Ничего не нашли</b>Попробуйте название станции или улицы${state.kpp!=='any'?', или снимите фильтр по коробке':''}.</div>`;
   $$('#list .item').forEach(b=>{
     b.onclick=()=>select(b.dataset.id,true);
@@ -1225,8 +1239,8 @@ function renderList(){
 /* ---------- detail ---------- */
 const ymPoint=p=>`https://yandex.ru/maps/?pt=${p.lon},${p.lat}&z=17&l=map`;
 const ymRoute=(a,b)=>`https://yandex.ru/maps/?rtext=${a?a.lat+','+a.lon:''}~${b.lat},${b.lon}&rtt=${a?'pd':'mt'}`;
-function nearRow(name,lines,t,d,href,id){
-  return `<li><button data-go="${id}"><div class="nm">${lines?dots(lines):''}${esc(name)}</div><div class="mt">${d?d+' м · ':''}<a href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">маршрут</a></div></button><div class="time">${t}<small> мин</small></div></li>`;
+function nearRow(name,lines,t,d,href,id,extra=''){
+  return `<li><button data-go="${id}"><div class="nm">${lines?dots(lines):''}${esc(name)}</div>${extra?`<div class="kpp">${extra}</div>`:''}<div class="mt">${d?d+' м · ':''}<a href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">маршрут</a></div></button><div class="time">${typeof t==='string'?t:`${t}<small> мин</small>`}</div></li>`;
 }
 function renderDetail(p){
   let h=`<button class="back" id="back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>Все места</button>`;
@@ -1236,10 +1250,10 @@ function renderDetail(p){
       <div class="how"><b>${p.type==='of'?'Офис автошколы':'Мотоплощадка · '+motoText(p).toLowerCase()}</b>${esc(p.addr||'')}${p.addr?'<br>':''}м. ${esc(p.station)}</div>`;
     h+=`<div class="actions"><a class="btn primary" href="${ymRoute(null,st)}" target="_blank" rel="noopener">Как добраться</a><a class="btn" href="${ymPoint(st)}" target="_blank" rel="noopener">Яндекс Карты</a></div>`;
   }else if(p.type==='st'){
-    const ads=(AD_BY_ST[p.id]||[]).sort((a,b)=>a.t-b.t);
+    const ads=p.ads,where=p.kind==='МЦД'?'МЦД':p.kind==='МЦК'?'МЦК':'метро';
     h+=`<h2>${esc(p.name)}</h2><div class="kind">${p.lines.map(l=>`<span class="line-badge">${dots([l])}${esc(l)}</span>`).join('')}${kppTags(p)}</div>
-      <div class="how"><b>Место встречи</b>${p.raw.m===0?'Занятия проходят по адресу рядом со станцией — список ниже.':`Инструктор встречает у станции ${p.kind==='МЦД'?'МЦД':p.kind==='МЦК'?'МЦК':'метро'}. Точный выход согласуйте при записи.`}</div>`;
-    if(ads.length)h+=`<div class="sec"><h3>Площадки рядом, пешком</h3><ul class="near">${ads.map(a=>nearRow(a.p.n,null,a.t,a.d,ymRoute(p,a.p),a.p.id)).join('')}</ul></div>`;
+      <div class="how"><b>Место встречи</b>${p.metro?`Инструктор встречает у станции ${where}. Точный выход согласуйте при записи.`:''}${p.metro&&ads.length?'<br>':''}${ads.length?(ads.length>1?'Занятия по адресам рядом со станцией — список ниже.':`Занятия по адресу ${esc(shortAddr(ads[0].p.n))}, ${walkTxt(ads[0])}.`):''}</div>`;
+    if(ads.length)h+=`<div class="sec"><h3>${ads.length>1?'Адреса':'Адрес'} рядом${ads.every(a=>!a.far)?', пешком':''}</h3><ul class="near">${ads.map(a=>nearRow(shortAddr(a.p.n),null,a.far?km(a.d):a.t,a.far?0:a.d,ymRoute(p,a.p),'',kppTags({type:'st',kpp:a.p.kpp||[]})+(ADMIN&&a.p.c?`<div class="warnbox">${esc(a.p.c)}</div>`:''))).join('')}</ul></div>`;
     h+=`<div class="actions"><a class="btn primary" href="${ymRoute(null,p)}" target="_blank" rel="noopener">Как добраться</a><a class="btn" href="${ymPoint(p)}" target="_blank" rel="noopener">Яндекс Карты</a></div>`;
   }else{
     const r=p.raw;
@@ -1346,8 +1360,9 @@ function updateCity(v){
 function highlightCity(p,fly){
   if(!cityMap)return;
   cityLinks.clearLayers();if(!p)return;
-  const others=p.type==='ad'?p.raw.nb.map(n=>stationInfo(n.s)).filter(Boolean):(AD_BY_ST[p.sid||p.id]||[]).map(a=>a.p);
-  others.forEach(o=>L.polyline([[p.lat,p.lon],[o.lat,o.lon]],{color:'#151717',weight:2,opacity:.7,dashArray:'2 6',interactive:false}).addTo(cityLinks));
+  const others=p.type==='st'?p.ads.map(a=>a.p):[];
+  others.forEach(o=>{L.polyline([[p.lat,p.lon],[o.lat,o.lon]],{color:'#151717',weight:2,opacity:.7,dashArray:'2 6',interactive:false}).addTo(cityLinks);
+    if(p.type==='st')L.circleMarker([o.lat,o.lon],{radius:6,color:'#fff',weight:2.5,fillColor:RING[svcOf({type:'st',kpp:o.kpp||[]})],fillOpacity:1,interactive:false}).bindTooltip(esc(shortAddr(o.n)),{permanent:true,direction:'right',offset:[10,0],className:'adr-tip'}).addTo(cityLinks)});
   if(fly){const m=cityMarkers[p.id];if(m)reveal(cityMap,cityCluster,m,15,()=>m.openTooltip())}
 }
 function hover(id){ /* list -> map */
@@ -1501,10 +1516,10 @@ function renderCard(){
   const ads=(AD_BY_ST[p.sid||id]||[]).sort((a,b)=>a.t-b.t);
   const line=x=>x.type==='of'?`<div class="r ok">Офис автошколы${x.addr?' · '+esc(x.addr):''}</div>`
     :x.type==='mo'?`<div class="r ok">Мотоплощадка · ${motoText(x).toLowerCase()}${x.addr?' · '+esc(x.addr):''}</div>`
-    :`${x.kpp.length?`<div class="kpp">${kppTags(x,true)}</div>`:''}<div class="r ok">${x.raw.m===0?'Занятия по адресу рядом со станцией':'Инструктор встречает у станции'}</div>`;
+    :`${x.kpp.length?`<div class="kpp">${kppTags(x,true)}</div>`:''}<div class="r ok">${x.metro?'Инструктор встречает у станции':'Занятия по адресу рядом со станцией'}</div>`;
   box.innerHTML=`<b>${esc(p.type==='st'?p.name:p.station)}</b><div class="r">${p.lines.map(l=>`${dots([l])}${esc(short(l))}`).join(' · ')}</div>`+
     line(p)+others.map(line).join('')+
-    (ads.length?`<div class="r">Площадки рядом: ${ads.slice(0,2).map(a=>esc(a.p.n)+', '+a.t+' мин').join('; ')}</div>`:'')+
+    (ads.length?`<div class="r">${ads.slice(0,2).map(a=>esc(shortAddr(a.p.n))+' · '+walkTxt(a)).join('<br>')}${ads.length>2?'<br>+ ещё '+(ads.length-2):''}</div>`:'')+
     `<div class="more"><button type="button" data-open="${id}">Подробнее</button></div>`;
   box.querySelector('[data-open]').onclick=()=>select(id,false);
   placeCard();requestAnimationFrame(()=>box.classList.add('on'));
@@ -1546,7 +1561,7 @@ function setView(v){
 $('#v-scheme').onclick=()=>setView('scheme');$('#v-map').onclick=()=>setView('map');
 
 /* ---------- controls ---------- */
-const nst=PLACES.filter(p=>p.type==='st').length,nad=PLACES.filter(p=>p.type==='ad').length;
+const nst=PLACES.filter(p=>p.metro).length,nad=PLACES.filter(p=>p.ads&&p.ads.length).length;
 
 $('#stats').innerHTML=`<div class="stat"><b>${PLACES.length}</b><span>мест встречи</span></div><div class="stat"><b>${nst}</b><span>у метро и МЦД</span></div><div class="stat"><b>${nad}</b><span>по адресу</span></div>`;
 const APP_VERSION=(document.querySelector('meta[name=app-version]')||{}).content||'dev';
@@ -1554,7 +1569,7 @@ $('#foot').textContent=`Версия ${APP_VERSION} · данные от ${D.dat
 let t;$('#q').oninput=e=>{state.q=e.target.value;$('#searchbox').classList.toggle('has-value',!!state.q);clearTimeout(t);t=setTimeout(()=>{if(state.sel)select(null);renderList()},120)};
 $('#clear').onclick=()=>{$('#q').value='';$('#q').dispatchEvent(new Event('input'));$('#q').focus()};
 $$('.seg [data-type]').forEach(b=>b.onclick=()=>{state.type=b.dataset.type;$$('.seg [data-type]').forEach(x=>x.setAttribute('aria-pressed',x===b));select(null);renderList()});
-$$('[data-kpp]').forEach(b=>b.onclick=()=>{state.kpp=b.dataset.kpp;$$('[data-kpp]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(state.kpp!=='any'&&state.type!=='all'){state.type='all';$$('.seg [data-type]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.type==='all'))}select(null);renderList()});
+$$('[data-kpp]').forEach(b=>b.onclick=()=>{state.kpp=b.dataset.kpp;$$('[data-kpp]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(state.kpp==='moto'&&state.type!=='all'){state.type='all';$$('.seg [data-type]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.type==='all'))}select(null);renderList()});
 $('#mcd').onchange=e=>{state.mcd=e.target.checked;select(null);renderList()};
 $('#toggle-lines').onclick=e=>{state.lines=!state.lines;e.currentTarget.setAttribute('aria-pressed',state.lines);if(cityMap){state.lines?cityLines.addTo(cityMap):cityLines.remove()}};
 addEventListener('keydown',e=>{if(e.key==='Escape'&&state.sel)select(null)});
