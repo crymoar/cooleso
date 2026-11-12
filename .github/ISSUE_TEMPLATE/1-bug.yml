@@ -1,7 +1,7 @@
 name: Ошибка
 description: Работает не так, как задумано. Версия — третий разряд (1.2.x).
 title: "Ошибка: "
-labels: ["ошибка"]
+labels: ["bug"]
 body:
   - type: textarea
     id: what

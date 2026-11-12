@@ -1,7 +1,7 @@
 name: Новая функция
 description: Возможность, которой на карте ещё нет. Версия — второй разряд (1.x.0).
 title: "Функция: "
-labels: ["функция"]
+labels: ["enhancement"]
 body:
   - type: textarea
     id: what
