@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>/* ?embed=1 — карта в iframe (сайт на Тильде) */if(new URLSearchParams(location.search).get('embed')==='1')document.documentElement.classList.add('embed')</script>
 <title>Где проходят занятия — автошкола «Колесо»</title>
 <meta name="app-version" content="dev">
 <meta name="description" content="Места встречи с инструктором в Москве и области: у метро и по адресу. Поиск, фильтры, время пешком от станции.">
@@ -953,6 +954,31 @@ button{cursor:pointer}
 }
 .adr-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8a4fe0;border:2px solid #fff;box-shadow:0 0 0 1px #c9cdd1;vertical-align:-1px}
 .leaflet-tooltip.adr-tip{font:600 12px/1.2 'Inter Tight',system-ui,sans-serif;padding:3px 7px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+
+/* ---------- ?embed=1: map inside an iframe ---------- */
+.gesture-hint{position:absolute;inset:0;z-index:1002;display:grid;place-items:center;padding:24px;background:rgba(21,23,23,.45);color:#fff;font-weight:800;font-size:17px;text-align:center;pointer-events:none;opacity:0;transition:opacity .25s}
+.gesture-hint.on{opacity:1}
+.foot a{color:inherit}
+.foot .full{font-weight:700;color:var(--ink-2);white-space:nowrap}
+html.embed .list,html.embed .detail{overscroll-behavior:auto}
+@media (max-width:820px){
+  html.embed .app{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
+  html.embed .map-wrap{position:relative;top:auto;height:45%;min-height:0;flex:none}
+  html.embed .panel{flex:1;min-height:0;overflow:hidden}
+  html.embed .head{display:none}
+  html.embed .controls{padding:8px 12px 8px}
+  html.embed .controls .flabel{display:none}
+  html.embed .search input{height:40px}
+  html.embed .seg{margin-top:6px!important;padding:3px}
+  html.embed .seg button{height:32px;font-size:13.5px}
+  html.embed .check{margin-top:6px;font-size:13px}
+  html.embed .list,html.embed .detail{flex:1;min-height:0;overflow:auto}
+  html.embed .list{padding-top:0}
+  html.embed .count{padding:6px 10px 4px}
+  html.embed .detail .back{top:0}
+  html.embed .foot{display:flex;justify-content:space-between;gap:10px;padding:6px 12px;font-size:11px;white-space:nowrap}
+  html.embed .foot .ver{display:none}
+}
 </style>
 </head>
 <body>
@@ -999,6 +1025,7 @@ button{cursor:pointer}
     <div class="mapbar"><button class="pill-btn" id="toggle-lines" aria-pressed="false">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 17c4-8 8 2 12-6 1.5-3 3.5-4 6-4"/></svg>Линии метро</button></div>
     <div class="legend" aria-hidden="true"><span class="lg-sc"><i class="ld" style="background:#f29900"></i>МКПП</span><span class="lg-sc"><i class="ld" style="background:#1f6fe5"></i>АКПП</span><span class="lg-sc"><i class="ld" style="background:#8a4fe0"></i>МКПП и АКПП</span><span class="lg-sc"><i class="ld" style="background:#e5484d"></i>мото</span><span class="lg-sc"><i class="ld" style="background:#151717"></i>офис</span><span class="lg-only-map brand-legend"><i class="lg-logo"></i>Локации «Колесо»</span><span class="lg-only-map" style="color:var(--muted)">М метро · Ц МЦК · Д МЦД · О офис · Мт мото · <i class="adr-dot"></i> адрес занятий</span></div>
+    <div class="gesture-hint" id="gesture-hint" aria-hidden="true"></div>
     <div class="fallback">Карта не загрузилась (нет интернета или WebGL). Список мест слева работает.</div>
   </section>
 </div>
@@ -1126,6 +1153,9 @@ let D;
 try{const me=await loadJSON(METRO_URL);const pl=await loadPlaces(me);D={...me,...pl}}
 catch(e){console.error(e);document.getElementById('list').innerHTML='<div class="empty"><b>Не удалось загрузить места занятий</b>Обновите страницу. Если не помогло — данные временно недоступны.</div>';return}
 const ADMIN=new URLSearchParams(location.search).has('admin');
+/* ?embed=1: inside an iframe the page never scrolls the window itself; one finger / plain wheel scroll the host page */
+const EMBED=document.documentElement.classList.contains('embed');
+const TOUCH=EMBED&&(('ontouchstart' in window)||navigator.maxTouchPoints>0);
 /* hover only for a real mouse: the pointer type of the last event decides (a tap must not trigger hover) */
 let lastPointer='mouse';['pointerdown','pointermove'].forEach(ev=>addEventListener(ev,e=>{lastPointer=e.pointerType},true));
 const CAN_HOVER=true;const isMouse=()=>lastPointer==='mouse';
@@ -1274,10 +1304,17 @@ let listScroll=0;
 function select(id,fly){
   const was=state.sel;state.sel=id;
   const p=id&&BY_ID[id];
+  if(EMBED){
+    if(p&&!was)listScroll=$('#list').scrollTop;
+    $('#panel').classList.toggle('show-detail',!!p);
+    if(p){renderDetail(p);$('#detail').scrollTop=0}
+    else if(was)$('#list').scrollTop=listScroll;
+  }else{
   if(MOBILE()&&p&&!was)listScroll=scrollY;
   $('#panel').classList.toggle('show-detail',!!p);
   if(p){renderDetail(p);$('#detail').scrollTop=0;if(MOBILE())scrollTo({top:0,behavior:'smooth'})}
   else if(MOBILE()&&was)requestAnimationFrame(()=>scrollTo({top:listScroll}));
+  }
   $$('#list .item').forEach(b=>b.classList.toggle('active',b.dataset.id===id));
   highlight(p,fly);schemeSelect(p,fly);
 }
@@ -1329,6 +1366,7 @@ function initCity(){
   cityMap=L.map('map',{maxZoom:19,minZoom:8,zoomControl:false}).setView([55.75,37.62],10);
   cityMap.attributionControl.setPrefix(false);              /* no Leaflet flag */
   L.control.zoom({position:'bottomright'}).addTo(cityMap);
+  embedGestures(cityMap);
   const attr='<a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
   try{
     if(!L.maplibreGL)throw Error('no maplibre');
@@ -1339,7 +1377,7 @@ function initCity(){
       if(l.type==='symbol'&&JSON.stringify(l.layout?.['text-field']||'').includes('name'))m.setLayoutProperty(l.id,'text-field',['coalesce',['get','name:ru'],['get','name']]);
     }});
     m.on('error',e=>console.warn(e.error));
-  }catch(e){L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(cityMap)}
+  }catch(e){L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(cityMap)}
   cityLines=L.layerGroup(D.lines.map(l=>L.polyline(l.g.map(seg=>seg.map(([lon,lat])=>[lat,lon])),{color:l.c,weight:3,opacity:.75,dashArray:l.k==='Метро'?null:'6 5',interactive:false})));
   if(state.lines)cityLines.addTo(cityMap);
   cityLinks=L.layerGroup().addTo(cityMap);
@@ -1369,9 +1407,31 @@ function hover(id){ /* list -> map */
   if(view==='scheme'&&sc.ready&&!sc.pinned)setTarget(id&&SM_MARK[id]?id:null);
   if(view==='map'&&cityMap){Object.values(cityMarkers).forEach(m=>m.closeTooltip());const m=id&&cityMarkers[id];if(m&&cityMap.hasLayer(m))m.openTooltip()}
 }
+/* like scrollIntoView({block:'nearest'}), but only inside the list: never scrolls the host page */
+function scrollInList(b){const l=$('#list'),lr=l.getBoundingClientRect(),r=b.getBoundingClientRect();
+  if(r.top<lr.top)l.scrollTop-=lr.top-r.top;else if(r.bottom>lr.bottom)l.scrollTop+=r.bottom-lr.bottom}
+/* embed: maps move with two fingers (touch) or Ctrl/⌘ + wheel (mouse); one finger and a plain wheel scroll the page */
+function embedGestures(map){
+  if(!EMBED)return;
+  const box=map.getContainer(),hint=$('#gesture-hint');let tm;
+  const show=t=>{hint.textContent=t;hint.classList.add('on');clearTimeout(tm);tm=setTimeout(()=>hint.classList.remove('on'),1300)};
+  const hide=()=>{clearTimeout(tm);hint.classList.remove('on')};
+  map.scrollWheelZoom.disable();
+  box.addEventListener('wheel',e=>{
+    if(!(e.ctrlKey||e.metaKey)){if(!TOUCH&&Math.abs(e.deltaY)>Math.abs(e.deltaX))show(`Масштаб — ${/Mac|iP/.test(navigator.platform)?'⌘':'Ctrl'} + колесо или кнопки + и −`);return}
+    e.preventDefault();hide();
+    const d=e.deltaMode===1?e.deltaY*20:e.deltaY;
+    map.setZoomAround(map.mouseEventToContainerPoint(e),map.getZoom()-d/120,{animate:false});
+  },{passive:false});
+  if(!TOUCH)return;
+  map.dragging.disable();      /* Leaflet then sets touch-action: pan-x pan-y — the browser scrolls with one finger, pinch stays with Leaflet */
+  let y0=null;
+  box.addEventListener('touchstart',e=>{if(e.touches.length>1){y0=null;hide()}else y0=e.touches[0].clientY},{passive:true});
+  box.addEventListener('touchmove',e=>{if(e.touches.length===1&&y0!=null&&Math.abs(e.touches[0].clientY-y0)>8){y0=null;show('Двигайте двумя пальцами')}},{passive:true});
+}
 function hoverList(id){ /* map -> list */
   $$('#list .item.hover').forEach(b=>b.classList.remove('hover'));
-  if(id){const b=$(`#list .item[data-id="${CSS.escape(id)}"]`);if(b){b.classList.add('hover');b.scrollIntoView({block:'nearest'})}}
+  if(id){const b=$(`#list .item[data-id="${CSS.escape(id)}"]`);if(b){b.classList.add('hover');if(EMBED)scrollInList(b);else b.scrollIntoView({block:'nearest'})}}
 }
 
 /* ----- metro scheme: Yandex Metro scheme as a flat Leaflet map (CRS.Simple) ----- */
@@ -1422,6 +1482,7 @@ async function loadScheme(){
     if(x1>x0)l.bb={x:x0,y:y0,width:x1-x0,height:y1-y0}});
   indexLines();
   smCluster=L.markerClusterGroup(schemeClusterOpts()).addTo(sm);
+  embedGestures(sm);
   sm.on('click',()=>{sc.pinned=null;if(state.sel)select(null);else setTarget(null,true)});
   sm.on('move zoom',placeCard);
   sm.on('zoomend',()=>{for(const g of Object.values(sc.byStation||{})){const st=ringStyle({cat:g.mark.options.cat});g.mark.setStyle({weight:st.weight});g.mark.setRadius(st.radius)}sc.top.eachLayer(l=>{const st=ringStyle({cat:(SM_MARK[sc.target]||{options:{}}).options.cat||'none'});l.setStyle({weight:st.weight+1});l.setRadius(st.radius+1.5)})});
@@ -1566,6 +1627,12 @@ const nst=PLACES.filter(p=>p.metro).length,nad=PLACES.filter(p=>p.ads&&p.ads.len
 $('#stats').innerHTML=`<div class="stat"><b>${PLACES.length}</b><span>мест встречи</span></div><div class="stat"><b>${nst}</b><span>у метро и МЦД</span></div><div class="stat"><b>${nad}</b><span>по адресу</span></div>`;
 const APP_VERSION=(document.querySelector('meta[name=app-version]')||{}).content||'dev';
 $('#foot').textContent=`Версия ${APP_VERSION} · данные от ${D.date}. Карта © OpenStreetMap, OpenFreeMap.`;
+if(EMBED){
+  const full=new URL(location.href);full.searchParams.delete('embed');
+  $('#foot').innerHTML=`<span><span class="ver">Версия ${esc(APP_VERSION)} · данные от ${esc(D.date)}. </span>Карта © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, <a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a>.</span> <a class="full" href="${esc(full.href)}" target="_blank" rel="noopener">Открыть на весь экран ↗</a>`;
+  /* any other external link (Leaflet attribution etc.) opens outside the iframe too */
+  document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href]');if(a&&/^https?:/.test(a.href)&&a.target!=='_blank'){a.target='_blank';a.rel='noopener'}},true);
+}
 let t;$('#q').oninput=e=>{state.q=e.target.value;$('#searchbox').classList.toggle('has-value',!!state.q);clearTimeout(t);t=setTimeout(()=>{if(state.sel)select(null);renderList()},120)};
 $('#clear').onclick=()=>{$('#q').value='';$('#q').dispatchEvent(new Event('input'));$('#q').focus()};
 $$('.seg [data-type]').forEach(b=>b.onclick=()=>{state.type=b.dataset.type;$$('.seg [data-type]').forEach(x=>x.setAttribute('aria-pressed',x===b));select(null);renderList()});
