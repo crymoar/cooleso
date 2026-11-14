@@ -1473,8 +1473,7 @@ async function loadScheme(){
   const svg=document.importNode(new DOMParser().parseFromString(txt,'image/svg+xml').documentElement,true);
   svg.setAttribute('viewBox',`0 0 ${W0} ${H0}`);
   sm=L.map('scheme',{crs:L.CRS.Simple,minZoom:-2.5,maxZoom:1.5,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:90,attributionControl:false,zoomControl:false,
-    /* embed on a computer: room to put the whole scheme right of the floating card when zoomed out */
-    maxBounds:EMBED&&!MOBILE()?[[-H0*.6,-W0*1.5],[H0*1.6,W0*1.6]]:[[-H0*.25,-W0*.25],[H0*1.25,W0*1.25]]});
+    maxBounds:EMBED&&!MOBILE()?[[-H0*.25,-W0],[H0*1.25,W0*2]]:[[-H0*.25,-W0*.25],[H0*1.25,W0*1.25]]});
   sm.createPane('marks').style.zIndex=450;sm.createPane('marktop').style.zIndex=460;sc.top=L.layerGroup().addTo(sm);
   sm.createPane('hits').style.zIndex=480;sc.hits=L.layerGroup().addTo(sm);
   /* station names go to their own layer above the place marks */
@@ -1540,8 +1539,11 @@ function indexLines(){
 function startView(){
   /* embed: fit the city centre (inside the outer ring) into the part of the map right of the card, by width and height */
   if(EMBED&&!MOBILE()){
-    /* embed: the whole scheme (stations x 340–2830, y 85–2795) fits into the map right of the card */
-    sm.fitBounds([toLL(250,0),toLL(2950,2900)],{paddingTopLeft:[OV()+16,16],paddingBottomRight:[16,16],animate:false});return}
+    /* embed: the scheme's width (stations x 340–2830) fills the area from the card to the right edge of the grid;
+       top and bottom may be cut a little */
+    const cw=$('#scheme').clientWidth,pr=$('#panel').getBoundingClientRect(),x0=pr.right,x1=cw-pr.left,k=(x1-x0)/2600,z=Math.log2(k);
+    const cx=1585-((x0+x1)/2-cw/2)/k;   /* scheme centre in the middle of that area */
+    sm.setView(toLL(cx,1560),z,{animate:false});return}
   const w=($('#scheme').clientWidth||1000)-OV();centerOn(sm,toLL(1520,1560),Math.log2(w/1500),{animate:false})}
 function fitScheme(anim){sm.fitBounds([[0,0],[H0,W0]],{paddingTopLeft:[12+OV(),12],paddingBottomRight:[12,12],animate:!!anim})}
 function updateScheme(v){
