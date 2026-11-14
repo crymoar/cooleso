@@ -980,8 +980,10 @@ html.embed .head,html.embed .foot{display:none}
 @media (min-width:821px){
   html.embed .app{display:block;position:relative;height:100%;overflow:hidden}
   html.embed .map-wrap{position:absolute;inset:0;z-index:0}
-  html.embed .panel{position:absolute;top:40px;left:var(--pl,16px);bottom:40px;width:var(--panel);z-index:5;border:0;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(21,23,23,.16),0 1px 3px rgba(21,23,23,.08)}
+  /* the card holds the filters and ~4–5 places; the list scrolls inside it */
+  html.embed .panel{position:absolute;top:40px;left:var(--pl,16px);height:min(580px, calc(100% - 80px));width:var(--panel);z-index:5;border:0;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(21,23,23,.16),0 1px 3px rgba(21,23,23,.08)}
   html.embed .legend,html.embed .mapbar{left:calc(var(--pl,16px) + var(--panel) + 16px)}
+  html.embed .controls{padding-top:20px}
   /* Tilda grid: content 1160px wide above 1200px, 940px up to 1200px, 620px up to 960px */
   html.embed.grid-tilda{--pl:max(16px, calc((100% - 1160px) / 2))}
 }

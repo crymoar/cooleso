@@ -145,14 +145,17 @@ test.describe('embed: компьютер, панель поверх карты',
       await expect(page.locator('#list .item').first()).toBeVisible();
       const r = await page.evaluate(() => {
         const b = s => document.querySelector(s).getBoundingClientRect();
-        return { map: b('.map-wrap'), panel: b('.panel'), legend: b('.legend'), w: innerWidth, h: innerHeight };
+        return { map: b('.map-wrap'), panel: b('.panel'), legend: b('.legend'), q: b('#q'), w: innerWidth, h: innerHeight };
       });
       expect(r.map.left).toBe(0);
       expect(r.map.width).toBe(r.w);
       expect(Math.round(r.panel.left)).toBe(left);
       expect(r.panel.top).toBeGreaterThanOrEqual(32);
       expect(r.h - r.panel.bottom).toBeGreaterThanOrEqual(32);
+      expect(r.panel.height, 'карточка не выше 580px').toBeLessThanOrEqual(580);
       expect(r.legend.left).toBeGreaterThan(r.panel.right);
+      expect(r.q.top - r.panel.top, 'отступ поиска от верха карточки').toBeGreaterThanOrEqual(16);
+      expect(r.q.left - r.panel.left, 'отступ поиска слева').toBeGreaterThanOrEqual(16);
     }
   });
 });

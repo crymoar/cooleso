@@ -14,7 +14,7 @@
 
 ```html
 <iframe src="https://crymoar.github.io/cooleso/map/?embed=1&grid=tilda"
-        style="display:block;width:100%;height:90vh;min-height:560px;border:0"
+        style="display:block;width:100%;height:min(660px, calc(100vh - 140px));min-height:520px;border:0"
         title="Где проходят занятия" loading="lazy"></iframe>
 ```
 
