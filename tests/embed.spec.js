@@ -110,14 +110,10 @@ test.describe('embed: компьютер', () => {
     expect(await hostY(page)).toBe(y0);
   });
 
-  test('все внешние ссылки открываются в новой вкладке, в подвале — «Открыть на весь экран» (п. 5, 6)', async ({ page, baseURL }) => {
+  test('нет шапки и подвала; все внешние ссылки открываются в новой вкладке (п. 5)', async ({ page, baseURL }) => {
     const { frame, f } = await openHost(page, baseURL);
-    const full = frame.locator('#foot a', { hasText: 'Открыть на весь экран' });
-    await expect(full).toBeVisible();
-    const href = await full.getAttribute('href');
-    expect(href).not.toContain('embed');
-    expect(new URL(href).pathname).toBe(new URL(baseURL).pathname);
-    await expect(frame.locator('#foot a', { hasText: 'OpenStreetMap' })).toHaveAttribute('target', '_blank');
+    await expect(frame.locator('.head')).toBeHidden();
+    await expect(frame.locator('#foot')).toBeHidden();
 
     await frame.locator('#list .item').first().click();
     await expect(frame.locator('#detail a').first()).toBeVisible();
@@ -126,6 +122,41 @@ test.describe('embed: компьютер', () => {
     const bad = await f.evaluate(() => [...document.querySelectorAll('a[href]')]
       .filter(a => /^https?:/i.test(a.getAttribute('href')) && a.target !== '_blank').map(a => a.outerHTML.slice(0, 120)));
     expect(bad).toEqual([]);
+  });
+});
+
+test.describe('embed: компьютер, панель поверх карты', () => {
+  test.skip(() => test.info().project.name !== 'desktop', 'десктопный проект');
+
+  test('grid=tilda повторяет ступени сетки Тильды: 1160 / 940 / 620', async ({ page, baseURL }) => {
+    for (const [w, grid] of [[1920, 1160], [1366, 1160], [1201, 1160], [1200, 940], [1024, 940], [960, 620], [900, 620]]) {
+      await page.setViewportSize({ width: w, height: 800 });
+      await page.goto(new URL('?embed=1&grid=tilda', baseURL).href);
+      await expect(page.locator('#list .item').first()).toBeVisible();
+      const r = await page.evaluate(() => { const p = document.querySelector('.panel').getBoundingClientRect(); return { left: p.left, right: p.right }; });
+      expect(Math.abs(r.left - (w - grid) / 2), `ширина ${w}`).toBeLessThanOrEqual(1);
+      expect(w - r.right, `карта видна правее панели при ширине ${w}`).toBeGreaterThan(300);
+    }
+  });
+
+  test('карта на всю ширину, панель висит поверх с отступами; &grid= ставит её по сетке сайта', async ({ page, baseURL }) => {
+    for (const [q, left] of [['?embed=1', 16], ['?embed=1&grid=1160', (1300 - 1160) / 2], ['?embed=1&grid=tilda', (1300 - 1160) / 2]]) {
+      await page.goto(new URL(q, baseURL).href);
+      await expect(page.locator('#list .item').first()).toBeVisible();
+      const r = await page.evaluate(() => {
+        const b = s => document.querySelector(s).getBoundingClientRect();
+        return { map: b('.map-wrap'), panel: b('.panel'), legend: b('.legend'), q: b('#q'), w: innerWidth, h: innerHeight };
+      });
+      expect(r.map.left).toBe(0);
+      expect(r.map.width).toBe(r.w);
+      expect(Math.round(r.panel.left)).toBe(left);
+      expect(r.panel.top).toBeGreaterThanOrEqual(32);
+      expect(r.h - r.panel.bottom).toBeGreaterThanOrEqual(32);
+      expect(r.panel.height, 'карточка не выше 580px').toBeLessThanOrEqual(580);
+      expect(r.legend.left).toBeGreaterThan(r.panel.right);
+      expect(r.q.top - r.panel.top, 'отступ поиска от верха карточки').toBeGreaterThanOrEqual(16);
+      expect(r.q.left - r.panel.left, 'отступ поиска слева').toBeGreaterThanOrEqual(16);
+    }
   });
 });
 
