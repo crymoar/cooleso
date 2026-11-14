@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<script>/* ?embed=1 — карта в iframe (сайт на Тильде) */if(new URLSearchParams(location.search).get('embed')==='1')document.documentElement.classList.add('embed')</script>
+<script>/* ?embed=1 — карта в iframe (сайт на Тильде); &grid=tilda — левый край панели по сетке Тильды (1160/940/620), &grid=1160 — по сетке заданной ширины */(function(){var q=new URLSearchParams(location.search),h=document.documentElement,g=q.get('grid');if(q.get('embed')!=='1')return;h.classList.add('embed');if(g==='tilda')h.classList.add('grid-tilda');else if((g=parseInt(g,10))>0&&g<4000)h.style.setProperty('--pl','max(16px, calc((100% - '+g+'px) / 2))')})()</script>
 <title>Где проходят занятия — автошкола «Колесо»</title>
 <meta name="app-version" content="dev">
 <meta name="description" content="Места встречи с инструктором в Москве и области: у метро и по адресу. Поиск, фильтры, время пешком от станции.">
@@ -980,9 +980,13 @@ html.embed .head,html.embed .foot{display:none}
 @media (min-width:821px){
   html.embed .app{display:block;position:relative;height:100%;overflow:hidden}
   html.embed .map-wrap{position:absolute;inset:0;z-index:0}
-  html.embed .panel{position:absolute;top:16px;left:16px;bottom:16px;width:var(--panel);z-index:5;border:0;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(21,23,23,.16),0 1px 3px rgba(21,23,23,.08)}
-  html.embed .legend,html.embed .mapbar{left:calc(var(--panel) + 32px)}
+  html.embed .panel{position:absolute;top:40px;left:var(--pl,16px);bottom:40px;width:var(--panel);z-index:5;border:0;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(21,23,23,.16),0 1px 3px rgba(21,23,23,.08)}
+  html.embed .legend,html.embed .mapbar{left:calc(var(--pl,16px) + var(--panel) + 16px)}
+  /* Tilda grid: content 1160px wide above 1200px, 940px up to 1200px, 620px up to 960px */
+  html.embed.grid-tilda{--pl:max(16px, calc((100% - 1160px) / 2))}
 }
+@media (min-width:821px) and (max-width:1200px){html.embed.grid-tilda{--pl:calc((100% - 940px) / 2)}}
+@media (min-width:821px) and (max-width:960px){html.embed.grid-tilda{--pl:calc((100% - 620px) / 2);--panel:360px}html.embed.grid-tilda .seg button{font-size:13px;gap:4px}html.embed.grid-tilda .controls{padding-left:16px;padding-right:16px}}
 </style>
 </head>
 <body>

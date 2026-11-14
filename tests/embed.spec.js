@@ -125,6 +125,38 @@ test.describe('embed: компьютер', () => {
   });
 });
 
+test.describe('embed: компьютер, панель поверх карты', () => {
+  test.skip(() => test.info().project.name !== 'desktop', 'десктопный проект');
+
+  test('grid=tilda повторяет ступени сетки Тильды: 1160 / 940 / 620', async ({ page, baseURL }) => {
+    for (const [w, grid] of [[1920, 1160], [1366, 1160], [1201, 1160], [1200, 940], [1024, 940], [960, 620], [900, 620]]) {
+      await page.setViewportSize({ width: w, height: 800 });
+      await page.goto(new URL('?embed=1&grid=tilda', baseURL).href);
+      await expect(page.locator('#list .item').first()).toBeVisible();
+      const r = await page.evaluate(() => { const p = document.querySelector('.panel').getBoundingClientRect(); return { left: p.left, right: p.right }; });
+      expect(Math.abs(r.left - (w - grid) / 2), `ширина ${w}`).toBeLessThanOrEqual(1);
+      expect(w - r.right, `карта видна правее панели при ширине ${w}`).toBeGreaterThan(300);
+    }
+  });
+
+  test('карта на всю ширину, панель висит поверх с отступами; &grid= ставит её по сетке сайта', async ({ page, baseURL }) => {
+    for (const [q, left] of [['?embed=1', 16], ['?embed=1&grid=1160', (1300 - 1160) / 2], ['?embed=1&grid=tilda', (1300 - 1160) / 2]]) {
+      await page.goto(new URL(q, baseURL).href);
+      await expect(page.locator('#list .item').first()).toBeVisible();
+      const r = await page.evaluate(() => {
+        const b = s => document.querySelector(s).getBoundingClientRect();
+        return { map: b('.map-wrap'), panel: b('.panel'), legend: b('.legend'), w: innerWidth, h: innerHeight };
+      });
+      expect(r.map.left).toBe(0);
+      expect(r.map.width).toBe(r.w);
+      expect(Math.round(r.panel.left)).toBe(left);
+      expect(r.panel.top).toBeGreaterThanOrEqual(32);
+      expect(r.h - r.panel.bottom).toBeGreaterThanOrEqual(32);
+      expect(r.legend.left).toBeGreaterThan(r.panel.right);
+    }
+  });
+});
+
 test.describe('embed: iPhone 13', () => {
   test.skip(() => test.info().project.name !== 'mobile', 'мобильный проект');
   const { defaultBrowserType, ...iphone } = devices['iPhone 13'];
