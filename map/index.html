@@ -1467,7 +1467,7 @@ async function loadScheme(){
   const svg=document.importNode(new DOMParser().parseFromString(txt,'image/svg+xml').documentElement,true);
   svg.setAttribute('viewBox',`0 0 ${W0} ${H0}`);
   sm=L.map('scheme',{crs:L.CRS.Simple,minZoom:-2.5,maxZoom:1.5,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:90,attributionControl:false,zoomControl:false,
-    maxBounds:EMBED&&!MOBILE()?[[-H0*.25,-W0*.45],[H0*1.25,W0*1.25]]:[[-H0*.25,-W0*.25],[H0*1.25,W0*1.25]]});
+    maxBounds:[[-H0*.25,-W0*.25],[H0*1.25,W0*1.25]]});
   sm.createPane('marks').style.zIndex=450;sm.createPane('marktop').style.zIndex=460;sc.top=L.layerGroup().addTo(sm);
   sm.createPane('hits').style.zIndex=480;sc.hits=L.layerGroup().addTo(sm);
   /* station names go to their own layer above the place marks */
@@ -1532,10 +1532,15 @@ function indexLines(){
 }
 function startView(){
   /* embed: fit the city centre (inside the outer ring) into the part of the map right of the card, by width and height */
-  if(EMBED&&!MOBILE()){const el=$('#scheme'),vw=el.clientWidth-OV(),vh=el.clientHeight;
-    let z=Math.min(Math.log2((vw-48)/1560),Math.log2((vh-48)/1400));   /* the centre fits by width and height */
-    z=Math.max(z,Math.log2(el.clientWidth/(W0*1.3)));                   /* …but no empty fields at the sides on wide screens */
-    centerOn(sm,toLL(1520,1560),Math.floor(z*4)/4,{animate:false});return}
+  if(EMBED&&!MOBILE()){
+    /* the scheme always covers the whole map, under and left of the card too: never show past its edges (stations span x 340–2830, y 85–2795);
+       within that, the city centre is shifted right of the card as far as the scheme allows */
+    const el=$('#scheme'),cw=el.clientWidth,ch=el.clientHeight,ov=OV(),X0=250,X1=2950,Y0=0,Y1=2900;
+    const fit=Math.min(Math.log2((cw-ov-48)/1560),Math.log2((ch-48)/1400));
+    const cover=Math.max(Math.log2(cw/(X1-X0)),Math.log2(ch/(Y1-Y0)));
+    const z=Math.max(Math.floor(fit*4)/4,Math.ceil(cover*4)/4),k=2**z,hw=cw/2/k,hh=ch/2/k;
+    const cx=Math.min(Math.max(1520-ov/2/k,X0+hw),X1-hw),cy=Math.min(Math.max(1560,Y0+hh),Y1-hh);
+    sm.setView(toLL(cx,cy),z,{animate:false});return}
   const w=($('#scheme').clientWidth||1000)-OV();centerOn(sm,toLL(1520,1560),Math.log2(w/1500),{animate:false})}
 function fitScheme(anim){sm.fitBounds([[0,0],[H0,W0]],{paddingTopLeft:[12+OV(),12],paddingBottomRight:[12,12],animate:!!anim})}
 function updateScheme(v){
