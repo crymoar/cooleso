@@ -984,6 +984,12 @@ html.embed .head,html.embed .foot{display:none}
   html.embed .panel{position:absolute;top:40px;left:var(--pl,16px);height:min(580px, calc(100% - 80px));width:var(--panel);z-index:5;border:0;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(21,23,23,.16),0 1px 3px rgba(21,23,23,.08)}
   html.embed .legend,html.embed .mapbar{left:calc(var(--pl,16px) + var(--panel) + 16px)}
   html.embed .controls{padding-top:20px}
+  /* right-hand controls on the same grid as the card */
+  html.embed .views,html.embed .sc-zoom{right:var(--pl,16px)}
+  html.embed .views{top:40px}
+  html.embed .sc-zoom{bottom:40px}
+  html.embed .is-map .views{right:calc(var(--pl,16px) + 48px)}
+  html.embed .leaflet-bottom.leaflet-right{right:calc(var(--pl,16px) - 10px);bottom:30px}
   /* Tilda grid: content 1160px wide above 1200px, 940px up to 1200px, 620px up to 960px */
   html.embed.grid-tilda{--pl:max(16px, calc((100% - 1160px) / 2))}
 }
@@ -1467,7 +1473,8 @@ async function loadScheme(){
   const svg=document.importNode(new DOMParser().parseFromString(txt,'image/svg+xml').documentElement,true);
   svg.setAttribute('viewBox',`0 0 ${W0} ${H0}`);
   sm=L.map('scheme',{crs:L.CRS.Simple,minZoom:-2.5,maxZoom:1.5,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:90,attributionControl:false,zoomControl:false,
-    maxBounds:[[-H0*.25,-W0*.25],[H0*1.25,W0*1.25]]});
+    /* embed on a computer: room to put the whole scheme right of the floating card when zoomed out */
+    maxBounds:EMBED&&!MOBILE()?[[-H0*.6,-W0*1.5],[H0*1.6,W0*1.6]]:[[-H0*.25,-W0*.25],[H0*1.25,W0*1.25]]});
   sm.createPane('marks').style.zIndex=450;sm.createPane('marktop').style.zIndex=460;sc.top=L.layerGroup().addTo(sm);
   sm.createPane('hits').style.zIndex=480;sc.hits=L.layerGroup().addTo(sm);
   /* station names go to their own layer above the place marks */
@@ -1533,14 +1540,8 @@ function indexLines(){
 function startView(){
   /* embed: fit the city centre (inside the outer ring) into the part of the map right of the card, by width and height */
   if(EMBED&&!MOBILE()){
-    /* the scheme always covers the whole map, under and left of the card too: never show past its edges (stations span x 340–2830, y 85–2795);
-       within that, the city centre is shifted right of the card as far as the scheme allows */
-    const el=$('#scheme'),cw=el.clientWidth,ch=el.clientHeight,ov=OV(),X0=250,X1=2950,Y0=0,Y1=2900;
-    const fit=Math.min(Math.log2((cw-ov-48)/1560),Math.log2((ch-48)/1400));
-    const cover=Math.max(Math.log2(cw/(X1-X0)),Math.log2(ch/(Y1-Y0)));
-    const z=Math.max(Math.floor(fit*4)/4,Math.ceil(cover*4)/4),k=2**z,hw=cw/2/k,hh=ch/2/k;
-    const cx=Math.min(Math.max(1520-ov/2/k,X0+hw),X1-hw),cy=Math.min(Math.max(1560,Y0+hh),Y1-hh);
-    sm.setView(toLL(cx,cy),z,{animate:false});return}
+    /* embed: the whole scheme (stations x 340–2830, y 85–2795) fits into the map right of the card */
+    sm.fitBounds([toLL(250,0),toLL(2950,2900)],{paddingTopLeft:[OV()+16,16],paddingBottomRight:[16,16],animate:false});return}
   const w=($('#scheme').clientWidth||1000)-OV();centerOn(sm,toLL(1520,1560),Math.log2(w/1500),{animate:false})}
 function fitScheme(anim){sm.fitBounds([[0,0],[H0,W0]],{paddingTopLeft:[12+OV(),12],paddingBottomRight:[12,12],animate:!!anim})}
 function updateScheme(v){
@@ -1567,7 +1568,7 @@ function updateScheme(v){
     hit.on('click',e=>{if(!m._map)return;L.DomEvent.stopPropagation(e);select(main.id,sm.getZoom()<-.5)});
     hit.addTo(sc.hits);
   }
-  if(state.q&&ms.length)sm.fitBounds(L.latLngBounds(ms.map(m=>m.getLatLng())),{paddingTopLeft:[70+OV(),70],paddingBottomRight:[70,70],maxZoom:-.5,animate:false});if(sm.getZoom()<-1.25)sm.setZoom(-1.25,{animate:false});
+  if(state.q&&ms.length)sm.fitBounds(L.latLngBounds(ms.map(m=>m.getLatLng())),{paddingTopLeft:[70+OV(),70],paddingBottomRight:[70,70],maxZoom:-.5,animate:false});if(!(EMBED&&!MOBILE())&&sm.getZoom()<-1.25)sm.setZoom(-1.25,{animate:false});
   smCluster.addLayers(ms.splice(0,ms.length>40?ms.length:0));ms.forEach(m=>smCluster.addLayer(m)); /* addLayers drops small sets */
   sc.labels.forEach(l=>l.el.classList.toggle('meet',!!l.id&&!!sc.byStation[l.id]));
   if(sc.target&&!SM_MARK[sc.target])setTarget(null,true);
