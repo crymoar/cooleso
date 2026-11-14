@@ -110,14 +110,10 @@ test.describe('embed: компьютер', () => {
     expect(await hostY(page)).toBe(y0);
   });
 
-  test('все внешние ссылки открываются в новой вкладке, в подвале — «Открыть на весь экран» (п. 5, 6)', async ({ page, baseURL }) => {
+  test('нет шапки и подвала; все внешние ссылки открываются в новой вкладке (п. 5)', async ({ page, baseURL }) => {
     const { frame, f } = await openHost(page, baseURL);
-    const full = frame.locator('#foot a', { hasText: 'Открыть на весь экран' });
-    await expect(full).toBeVisible();
-    const href = await full.getAttribute('href');
-    expect(href).not.toContain('embed');
-    expect(new URL(href).pathname).toBe(new URL(baseURL).pathname);
-    await expect(frame.locator('#foot a', { hasText: 'OpenStreetMap' })).toHaveAttribute('target', '_blank');
+    await expect(frame.locator('.head')).toBeHidden();
+    await expect(frame.locator('#foot')).toBeHidden();
 
     await frame.locator('#list .item').first().click();
     await expect(frame.locator('#detail a').first()).toBeVisible();
