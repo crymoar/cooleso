@@ -75,6 +75,21 @@ systemctl daemon-reload
 systemctl enable --now map-update.timer >/dev/null
 
 echo "== 4. сайт nginx $DOMAIN"
+# PDF оферты для кнопки «Скачать оферту» (репозиторий crymoar/cooleso-oferta).
+# Лежит отдельно от карты: map-update подменяет current и его не трогает.
+# Залить файл: scp файл.pdf root@сервер:/var/www/cooleso-docs/oferta.pdf
+mkdir -p /var/www/cooleso-docs
+OFERTA_CONF=$(mktemp)
+cat > "$OFERTA_CONF" <<'EOF'
+
+    # оферта: PDF для кнопки «Скачать оферту» (отдельная папка, не трогается при обновлении карты)
+    location = /docs/oferta.pdf {
+        alias /var/www/cooleso-docs/oferta.pdf;
+        default_type application/pdf;
+        add_header Content-Disposition 'attachment; filename="UPC_Cooleso_Oferta_03_11_2026.pdf"';
+        add_header Cache-Control "no-cache";
+    }
+EOF
 if [ ! -f /etc/nginx/sites-available/$DOMAIN ]; then
 cat > /etc/nginx/sites-available/$DOMAIN <<EOF
 server {
@@ -96,9 +111,15 @@ server {
     location /data/        { add_header Cache-Control "no-cache"; }
     location = /metro-scheme.svg { add_header Cache-Control "public, max-age=3600"; }
     location / { try_files \$uri \$uri/ =404; }
+$(cat "$OFERTA_CONF")
 }
 EOF
 fi
+# в уже существующий конфиг: дописать блок оферты, если его там ещё нет
+if ! grep -q 'location = /docs/oferta.pdf' /etc/nginx/sites-available/$DOMAIN; then
+  sed -i '/location \/ { try_files \$uri \$uri\/ =404; }/r '"$OFERTA_CONF" /etc/nginx/sites-available/$DOMAIN
+fi
+rm -f "$OFERTA_CONF"
 ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/$DOMAIN
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
