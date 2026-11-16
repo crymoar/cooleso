@@ -1438,8 +1438,9 @@ function embedGestures(map){
   const show=t=>{hint.textContent=t;hint.classList.add('on');clearTimeout(tm);tm=setTimeout(()=>hint.classList.remove('on'),1300)};
   const hide=()=>{clearTimeout(tm);hint.classList.remove('on')};
   map.scrollWheelZoom.disable();
+  /* ⌘/Ctrl + wheel (and trackpad pinch) zooms the map; a plain wheel is left to the page (see the host bridge below) */
   box.addEventListener('wheel',e=>{
-    if(!(e.ctrlKey||e.metaKey)){if(!TOUCH&&Math.abs(e.deltaY)>Math.abs(e.deltaX))show(`Масштаб — ${/Mac|iP/.test(navigator.platform)?'⌘':'Ctrl'} + колесо или кнопки + и −`);return}
+    if(!(e.ctrlKey||e.metaKey))return;
     e.preventDefault();hide();
     const d=e.deltaMode===1?e.deltaY*20:e.deltaY;
     map.setZoomAround(map.mouseEventToContainerPoint(e),map.getZoom()-d/120,{animate:false});
@@ -1449,6 +1450,23 @@ function embedGestures(map){
   let y0=null;
   box.addEventListener('touchstart',e=>{if(e.touches.length>1){y0=null;hide()}else y0=e.touches[0].clientY},{passive:true});
   box.addEventListener('touchmove',e=>{if(e.touches.length===1&&y0!=null&&Math.abs(e.touches[0].clientY-y0)>8){y0=null;show('Двигайте двумя пальцами')}},{passive:true});
+}
+/* host bridge: some browsers (Safari) do not pass a wheel scroll from an iframe to the page.
+   The host page answers {koleso:'host'} to our {koleso:'ready'}; then a plain wheel that nothing inside the map
+   can scroll is sent to the page as {koleso:'scroll',dx,dy} and the page scrolls itself.
+   Without an answer the browser's own behaviour is kept. */
+let HOST=null;
+if(EMBED&&parent!==window){
+  addEventListener('message',e=>{if(e.source===parent&&e.data&&e.data.koleso==='host')HOST=e.source});
+  try{parent.postMessage({koleso:'ready'},'*')}catch(_){}
+  const canScroll=(t,dy)=>{for(let el=t;el&&el!==document.body;el=el.parentElement){
+    if(el.scrollHeight>el.clientHeight+1&&/auto|scroll/.test(getComputedStyle(el).overflowY)&&
+       (dy<0?el.scrollTop>0:el.scrollTop+el.clientHeight<el.scrollHeight-1))return true}return false};
+  document.addEventListener('wheel',e=>{
+    if(!HOST||e.ctrlKey||e.metaKey||canScroll(e.target,e.deltaY))return;
+    const k=e.deltaMode===1?16:e.deltaMode===2?innerHeight:1;
+    e.preventDefault();HOST.postMessage({koleso:'scroll',dx:e.deltaX*k,dy:e.deltaY*k},'*');
+  },{passive:false});
 }
 function hoverList(id){ /* map -> list */
   $$('#list .item.hover').forEach(b=>b.classList.remove('hover'));
