@@ -1,8 +1,13 @@
 // Режим ?embed=1: карта в iframe на чужой странице (сайт на Тильде).
 // Страница-хозяин: блок 600px, iframe с картой, блок 600px.
 const { test, expect, devices } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
 
-async function openHost(page, baseURL, iframeHeight = '90vh') {
+// Блок для Тильды (deploy/tilda/map-block.html): iframe + скрипт, который листает страницу по просьбе карты
+const BLOCK = fs.readFileSync(path.join(__dirname, '..', 'deploy', 'tilda', 'map-block.html'), 'utf8');
+
+async function openHost(page, baseURL, iframeHeight = '90vh', { bridge = true } = {}) {
   // страница-хозяин подставляется рядом с картой (Chrome не даёт внешней странице встроить localhost)
   const HOST = new URL('__embed-host.html', baseURL).href;
   const src = new URL('./?embed=1', baseURL).href;
@@ -11,7 +16,8 @@ async function openHost(page, baseURL, iframeHeight = '90vh') {
     body: `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>body{margin:0}.blk{height:600px;background:#eee}</style>
 <div class="blk" id="top">Блок сверху</div>
-<iframe id="koleso" src="${src}" style="display:block;width:100%;height:${iframeHeight};border:0"></iframe>
+<div class="koleso-map"><iframe id="koleso" src="${src}" style="display:block;width:100%;height:${iframeHeight};border:0"></iframe></div>
+${bridge ? BLOCK.match(/<script>[\s\S]*<\/script>/)[0] : ''}
 <div class="blk" id="bottom">Блок снизу</div>`,
   }));
   await page.goto(HOST);
@@ -75,7 +81,7 @@ test.describe('embed: компьютер', () => {
     await page.waitForTimeout(500);
     expect(await hostY(page)).toBeGreaterThan(300);
     expect(await schemeSize(f)).toBe(s0);
-    await expect(frame.locator('#gesture-hint')).toHaveClass(/on/);
+    await expect(frame.locator('#gesture-hint')).not.toHaveClass(/on/); // без серого оверлея
 
     const y1 = await hostY(page);
     const c2 = await box(page, frame, '#scheme');
@@ -92,6 +98,37 @@ test.describe('embed: компьютер', () => {
     await page.waitForTimeout(600);
     expect(await schemeSize(f)).toBeGreaterThan(s1);
     expect(await hostY(page)).toBe(y1);
+  });
+
+  test('колесо пересылается странице через скрипт блока (Safari сам не передаёт прокрутку из iframe)', async ({ page, baseURL }) => {
+    const { frame, f } = await openHost(page, baseURL);
+    await page.evaluate(() => { window.__fwd = 0; addEventListener('message', e => { if (e.data && e.data.koleso === 'scroll') window.__fwd++; }); });
+    await scrollHostTo(page, 300);
+    const c = await box(page, frame, '#scheme');
+    await page.mouse.move(c.x, c.y);
+    await page.mouse.wheel(0, 300);
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => window.__fwd), 'колесо над схемой ушло странице').toBeGreaterThan(0);
+    expect(await hostY(page)).toBeGreaterThan(300);
+    // над списком, который ещё листается, колесо листает список, а не страницу
+    const y1 = await hostY(page), n1 = await page.evaluate(() => window.__fwd);
+    const l = await box(page, frame, '#list');
+    await page.mouse.move(l.x, l.y);
+    await page.mouse.wheel(0, 200);
+    await page.waitForTimeout(400);
+    expect(await f.evaluate(() => document.getElementById('list').scrollTop)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => window.__fwd)).toBe(n1);
+    expect(await hostY(page)).toBe(y1);
+  });
+
+  test('без скрипта блока колесо остаётся за браузером (карта ничего не перехватывает)', async ({ page, baseURL }) => {
+    const { frame } = await openHost(page, baseURL, '90vh', { bridge: false });
+    await scrollHostTo(page, 300);
+    const c = await box(page, frame, '#scheme');
+    await page.mouse.move(c.x, c.y);
+    await page.mouse.wheel(0, 300);
+    await page.waitForTimeout(400);
+    expect(await hostY(page)).toBeGreaterThan(300); // Chrome сам передаёт прокрутку странице
   });
 
   test('выбор места не прокручивает окно: карточка открывается в панели (п. 4)', async ({ page, baseURL }) => {

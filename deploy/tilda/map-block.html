@@ -1,0 +1,19 @@
+<div class="koleso-map"><iframe src="https://89-104-70-192.sslip.io/?embed=1&grid=tilda" title="Где проходят занятия — автошкола «Колесо»" loading="lazy"></iframe></div>
+<style>
+.koleso-map iframe{display:block;width:100%;height:min(660px, calc(100vh - 140px));min-height:520px;border:0}
+@media (max-width:820px){.koleso-map iframe{height:85vh;min-height:520px}}
+</style>
+<script>
+/* Колесо мыши над картой листает страницу (Safari сам не передаёт прокрутку из iframe).
+   Карта присылает {koleso:'ready'} — отвечаем {koleso:'host'}; потом она присылает {koleso:'scroll',dx,dy}. */
+(function(){
+  if(window.__kolesoMapHost)return;window.__kolesoMapHost=true;
+  window.addEventListener('message',function(e){
+    var d=e.data;if(!d||!d.koleso)return;
+    var ok=[].some.call(document.querySelectorAll('.koleso-map iframe'),function(f){return f.contentWindow===e.source});
+    if(!ok)return;
+    if(d.koleso==='ready')e.source.postMessage({koleso:'host'},'*');
+    else if(d.koleso==='scroll')window.scrollBy(+d.dx||0,+d.dy||0);
+  });
+})();
+</script>
